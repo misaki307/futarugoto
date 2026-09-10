@@ -775,14 +775,26 @@
 .calendar-cell.is-today {
   border: 2px solid var(--color-primary);
 }
+.calendar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+.calendar-cell.has-event {
+  background: color-mix(in srgb, var(--hero-color, var(--color-primary)) 24%, var(--color-surface));
+  color: var(--hero-color, var(--color-primary));
+  font-weight: 800;
+}
+.calendar-cell.has-event .calendar-dot {
+  background: var(--hero-color, var(--color-primary));
+}
 .calendar-cell.is-selected {
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
-.calendar-cell__icon {
-  width: 13px;
-  height: 13px;
-  font-size: 11px;
+.calendar-cell.is-selected .calendar-dot {
+  background: var(--color-on-primary);
 }
 
 .calendar-nav__deco {

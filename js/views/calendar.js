@@ -2,11 +2,6 @@ import { store } from "../store.js";
 import { escapeHtml, toDateKey, compressImageFile, showToast, illustration } from "../util.js";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
-const DAY_ICONS = [
-  ["assets/decorations/heart.png", "💛"],
-  ["assets/decorations/star.png", "⭐"],
-  ["assets/icons/plane.png", "✈️"],
-];
 
 export function mount(root) {
   const today = new Date();
@@ -59,11 +54,10 @@ export function mount(root) {
         const isToday = dateKey === toDateKey(today);
         const isSelected = dateKey === selectedKey;
         const hasEvents = eventsOn(dateKey).length > 0;
-        const [iconSrc, iconFallback] = DAY_ICONS[d % DAY_ICONS.length];
         return `
-        <button class="calendar-cell ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""}" data-date="${dateKey}">
+        <button class="calendar-cell ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${hasEvents ? "has-event" : ""}" data-date="${dateKey}">
           <span>${d}</span>
-          ${hasEvents ? illustration(iconSrc, iconFallback, { className: "illust--sm calendar-cell__icon" }) : ""}
+          ${hasEvents ? `<span class="calendar-dot"></span>` : ""}
         </button>`;
       })
       .join("");

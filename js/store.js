@@ -31,8 +31,8 @@ export const DEFAULT_LISTS = [
 
 const DEFAULT_PROFILE = {
   people: [
-    { name: "わたし", avatar: "🐶", photo: null },
-    { name: "友だち", avatar: "🐱", photo: null },
+    { name: "わたし", avatar: "🐶", photo: null, bio: "" },
+    { name: "友だち", avatar: "🐱", photo: null, bio: "" },
   ],
   startDate: null,
 };
@@ -392,6 +392,16 @@ async function togglePhotoFavorite(id) {
   else photoFavoriteIds.add(id);
   await setDoc(doc(db, "couples", coupleId), { photoFavorites: [...photoFavoriteIds] }, { merge: true });
 }
+// ホームのハイライトから写真タブへ遷移する際、開くアルバムを一時的に受け渡す
+let pendingAlbumOpen = null;
+function requestOpenAlbum(albumId) {
+  pendingAlbumOpen = albumId;
+}
+function consumePendingAlbumOpen() {
+  const id = pendingAlbumOpen;
+  pendingAlbumOpen = null;
+  return id;
+}
 // アルバムに写真を直接追加する(投稿や予定に紐付かない単独の思い出)
 async function addPhoto(photo, caption, date) {
   if (!photo) return;
@@ -457,6 +467,8 @@ export const store = {
   removeAlbum,
   subscribeAlbums,
   setPhotoAlbum,
+  requestOpenAlbum,
+  consumePendingAlbumOpen,
   getAllPhotos,
   togglePhotoFavorite,
   addPhoto,

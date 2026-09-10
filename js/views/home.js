@@ -21,8 +21,46 @@ export function mount(root, switchView) {
     const wannaGo = store.getLists().find((l) => l.id === "wanna-go");
     const recentPhotos = store.getAllPhotos().slice(0, 6);
     const unseenCount = store.getUnseenPostCount();
+    const myIndex = store.getMyAuthorIndex();
+    const me = profile.people[myIndex] || profile.people[0];
+    const albums = store.getAlbums();
+    const allPhotos = store.getAllPhotos();
 
     root.innerHTML = `
+      <section class="profile-room card">
+        <div class="profile-room__top">
+          <button class="profile-room__avatar-btn" data-edit-profile="${myIndex}">${avatarHtml(me, "profile-room__avatar")}</button>
+          <div class="profile-room__info">
+            <div class="profile-room__name">${escapeHtml(me.name)}</div>
+            <div class="profile-room__bio">${me.bio ? escapeHtml(me.bio) : "タップしてひとことを設定"}</div>
+          </div>
+        </div>
+        <div class="profile-room__highlights">
+          ${albums
+            .map((a) => {
+              const cover = allPhotos.find((p) => p.albumId === a.id);
+              return `<button class="highlight-bubble" data-open-album="${a.id}">
+                <span class="highlight-bubble__img">${cover ? `<img src="${cover.photo}" alt="" />` : "📁"}</span>
+                <span class="highlight-bubble__label">${escapeHtml(a.name)}</span>
+              </button>`;
+            })
+            .join("")}
+          <button class="highlight-bubble highlight-bubble--add" id="room-add-album-btn" type="button">
+            <span class="highlight-bubble__img">＋</span>
+            <span class="highlight-bubble__label">新規</span>
+          </button>
+        </div>
+        ${
+          allPhotos.length > 0
+            ? `<div class="photo-grid">${allPhotos
+                .slice(0, 9)
+                .map((p) => `<button class="photo-tile" data-nav="photos"><img src="${p.photo}" alt="" /></button>`)
+                .join("")}</div>
+              ${allPhotos.length > 9 ? `<button class="profile-room__more" data-nav="photos">すべての写真を見る(${allPhotos.length}枚)</button>` : ""}`
+            : `<div class="empty-illust">${illustration("assets/characters/rabbit.png", "🐰", { className: "illust--md" })}まだ写真がないよ</div>`
+        }
+      </section>
+
       <section class="screen-hero home-hero">
         ${sticker("assets/characters/dog.png", "", "sticker--pop")}
         ${sticker("assets/characters/rabbit.png", "", "sticker--pop")}
@@ -139,6 +177,25 @@ export function mount(root, switchView) {
       el.addEventListener("click", () => switchView(el.dataset.nav));
     });
 
+    // ---- ハイライト(アルバム)からの遷移 ----
+    root.querySelectorAll("[data-open-album]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        store.requestOpenAlbum(btn.dataset.openAlbum);
+        switchView("photos");
+      });
+    });
+    root.querySelector("#room-add-album-btn")?.addEventListener("click", async () => {
+      const name = window.prompt("アルバムの名前を入力してください(例: ディズニーの思い出)");
+      if (!name || !name.trim()) return;
+      try {
+        const id = await store.createAlbum(name);
+        store.requestOpenAlbum(id);
+        switchView("photos");
+      } catch {
+        showToast("作成に失敗しました");
+      }
+    });
+
     // ---- プロフィールのクイック編集 ----
     root.querySelectorAll("[data-edit-profile]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -169,6 +226,7 @@ export function mount(root, switchView) {
             </div>
           </div>
         </div>
+        <textarea class="textarea" id="qe-bio" maxlength="60" placeholder="ひとこと(自己紹介)" style="margin-top:10px;">${escapeHtml(p.bio || "")}</textarea>
         <button class="btn btn-primary btn-block" id="qe-save" style="margin-top:10px;">保存する</button>
       `;
       let pendingProfilePhoto = p.photo || null;
@@ -198,8 +256,9 @@ export function mount(root, switchView) {
       quickEditBox.querySelector("#qe-save").addEventListener("click", async () => {
         const name = quickEditBox.querySelector("#qe-name").value.trim() || p.name;
         const avatar = quickEditBox.querySelector("#qe-emoji").value.trim() || p.avatar;
+        const bio = quickEditBox.querySelector("#qe-bio").value.trim();
         const people = profile.people.map((person, i) =>
-          i === openProfileIndex ? { name, avatar, photo: pendingProfilePhoto } : person
+          i === openProfileIndex ? { name, avatar, photo: pendingProfilePhoto, bio } : person
         );
         try {
           await store.setProfile({ people });
@@ -279,6 +338,7 @@ export function mount(root, switchView) {
     store.subscribeEvents(render),
     store.subscribePhotos(render),
     store.subscribeLastSeen(render),
+    store.subscribeAlbums(render),
   ];
   return () => unsubs.forEach((fn) => fn());
 }

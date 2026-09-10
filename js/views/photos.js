@@ -7,6 +7,12 @@ export function mount(root) {
   let openPhotoId = null;
   let openAlbumId = null;
 
+  const pendingAlbum = store.consumePendingAlbumOpen();
+  if (pendingAlbum) {
+    filter = "album";
+    openAlbumId = pendingAlbum;
+  }
+
   root.innerHTML = `
     <section class="screen-hero screen-hero--row">
       <div>
@@ -32,9 +38,9 @@ export function mount(root) {
     </div>
 
     <div class="segmented" id="photo-filters">
-      <button class="segmented__item is-active" data-filter="all">すべて</button>
-      <button class="segmented__item" data-filter="favorite">お気に入り</button>
-      <button class="segmented__item" data-filter="album">アルバム</button>
+      <button class="segmented__item ${filter === "all" ? "is-active" : ""}" data-filter="all">すべて</button>
+      <button class="segmented__item ${filter === "favorite" ? "is-active" : ""}" data-filter="favorite">お気に入り</button>
+      <button class="segmented__item ${filter === "album" ? "is-active" : ""}" data-filter="album">アルバム</button>
     </div>
     <div id="photo-content"></div>
 

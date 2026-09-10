@@ -1,5 +1,5 @@
 import { store } from "../store.js";
-import { escapeHtml, formatRelativeTime, compressImageFile, showToast, illustration } from "../util.js";
+import { escapeHtml, formatRelativeTime, compressImageFile, showToast, illustration, avatarHtml } from "../util.js";
 
 const REACTION_EMOJIS = ["❤️", "👍", "😂"];
 const CORNER_DECOS = ["assets/decorations/heart.png", "assets/decorations/star.png", "assets/decorations/flower-small.png"];
@@ -7,8 +7,9 @@ const CORNER_ROTATIONS = [-10, 8, -6];
 
 export function mount(root) {
   let pendingPhoto = null;
-  let author = 0;
+  let author = store.getMyAuthorIndex();
   const profile = store.getProfile();
+  store.markSeen("timeline");
 
   root.innerHTML = `
     <section class="screen-hero screen-hero--row">
@@ -23,8 +24,8 @@ export function mount(root) {
       <div class="composer__author" id="composer-author">
         ${profile.people
           .map(
-            (p, i) => `<button class="author-pick ${i === 0 ? "is-active" : ""}" data-author="${i}" type="button">
-              ${escapeHtml(p.avatar)} ${escapeHtml(p.name)}
+            (p, i) => `<button class="author-pick ${i === author ? "is-active" : ""}" data-author="${i}" type="button">
+              ${avatarHtml(p, "")} ${escapeHtml(p.name)}
             </button>`
           )
           .join("")}
@@ -86,7 +87,7 @@ export function mount(root) {
       <article class="card post-card" data-id="${post.id}">
         ${deco}
         <div class="post-card__meta">
-          <span class="post-avatar">${escapeHtml(person.avatar)}</span>
+          ${avatarHtml(person, "post-avatar")}
           <span class="post-card__who">
             <span class="post-card__author">${escapeHtml(person.name)}</span>
             <span class="post-card__time">${formatRelativeTime(post.createdAt)}</span>

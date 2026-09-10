@@ -78,6 +78,15 @@ export function sticker(src, alt, className = "") {
   return `<span class="sticker ${className}"><img src="${src}" alt="${escapeHtml(alt)}" loading="lazy" /></span>`;
 }
 
+// プロフィールのアバターを表示する。写真が設定されていればそれを、
+// なければ絵文字を表示する。className はアバターを囲む要素(丸い枠)に付けるクラス。
+export function avatarHtml(person, className = "") {
+  if (person?.photo) {
+    return `<img class="${className}" src="${person.photo}" alt="" style="object-fit:cover;" />`;
+  }
+  return `<span class="${className}">${escapeHtml(person?.avatar || "🙂")}</span>`;
+}
+
 let toastTimer = null;
 export function showToast(message) {
   const el = document.getElementById("toast");

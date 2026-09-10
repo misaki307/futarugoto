@@ -1,7 +1,7 @@
 // データ層。Firestoreのリアルタイム購読(onSnapshot)でクラウド同期する。
 // 画面側からの呼び出し方(getX/subscribeX/addX...)はローカル版から変えていない。
 
-import { db } from "./auth.js";
+import { db, getCurrentUser } from "./auth.js";
 import {
   collection,
   doc,
@@ -31,8 +31,8 @@ export const DEFAULT_LISTS = [
 
 const DEFAULT_PROFILE = {
   people: [
-    { name: "わたし", avatar: "🐶" },
-    { name: "友だち", avatar: "🐱" },
+    { name: "わたし", avatar: "🐶", photo: null },
+    { name: "友だち", avatar: "🐱", photo: null },
   ],
   startDate: null,
 };
@@ -44,34 +44,35 @@ let events = [];
 let profile = DEFAULT_PROFILE;
 let photoFavoriteIds = new Set();
 let standalonePhotos = [];
+let albums = [];
+let coupleMembers = [];
+let lastSeen = {};
 
-const listeners = { posts: new Set(), lists: new Set(), events: new Set(), profile: new Set(), photos: new Set() };
+const listeners = {
+  posts: new Set(),
+  lists: new Set(),
+  events: new Set(),
+  profile: new Set(),
+  photos: new Set(),
+  albums: new Set(),
+  lastSeen: new Set(),
+};
+const getters = {
+  posts: () => getPosts(),
+  lists: () => getLists(),
+  events: () => getEvents(),
+  photos: () => getAllPhotos(),
+  profile: () => getProfile(),
+  albums: () => getAlbums(),
+  lastSeen: () => lastSeen,
+};
 function notify(key) {
-  const value =
-    key === "posts"
-      ? getPosts()
-      : key === "lists"
-      ? getLists()
-      : key === "events"
-      ? getEvents()
-      : key === "photos"
-      ? getAllPhotos()
-      : getProfile();
+  const value = getters[key]();
   listeners[key].forEach((cb) => cb(value));
 }
 function subscribe(key, cb) {
   listeners[key].add(cb);
-  cb(
-    key === "posts"
-      ? getPosts()
-      : key === "lists"
-      ? getLists()
-      : key === "events"
-      ? getEvents()
-      : key === "photos"
-      ? getAllPhotos()
-      : getProfile()
-  );
+  cb(getters[key]());
   return () => listeners[key].delete(cb);
 }
 
@@ -90,6 +91,7 @@ export function init(id) {
     onSnapshot(col("posts"), (snap) => {
       posts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       notify("posts");
+      notify("photos");
     })
   );
 
@@ -110,6 +112,7 @@ export function init(id) {
     onSnapshot(col("events"), (snap) => {
       events = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       notify("events");
+      notify("photos");
     })
   );
 
@@ -121,14 +124,32 @@ export function init(id) {
   );
 
   unsubFns.push(
+    onSnapshot(col("albums"), (snap) => {
+      albums = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      notify("albums");
+    })
+  );
+
+  unsubFns.push(
     onSnapshot(doc(db, "couples", coupleId), (snap) => {
       const data = snap.data() || {};
       profile = data.profile || DEFAULT_PROFILE;
       photoFavoriteIds = new Set(data.photoFavorites || []);
+      coupleMembers = data.members || [];
       notify("profile");
       notify("photos");
     })
   );
+
+  const uid = getCurrentUser()?.uid;
+  if (uid) {
+    unsubFns.push(
+      onSnapshot(doc(db, "users", uid), (snap) => {
+        lastSeen = (snap.data() || {}).lastSeen || {};
+        notify("lastSeen");
+      })
+    );
+  }
 }
 
 // ---- profile ----
@@ -148,6 +169,32 @@ function getDaysTogether() {
   const start = new Date(y, m - 1, d);
   const diff = Math.floor((Date.now() - start.getTime()) / 86400000);
   return diff >= 0 ? diff + 1 : null;
+}
+// ログイン中の自分が profile.people の何番目か(0 or 1)。カップル作成/参加した順。
+function getMyAuthorIndex() {
+  const uid = getCurrentUser()?.uid;
+  const idx = coupleMembers.indexOf(uid);
+  return idx === -1 ? 0 : idx;
+}
+
+// ---- 既読管理(アプリ内通知バッジ用) ----
+function getLastSeen(key) {
+  return lastSeen[key] || 0;
+}
+async function markSeen(key) {
+  const uid = getCurrentUser()?.uid;
+  if (!uid) return;
+  lastSeen = { ...lastSeen, [key]: Date.now() };
+  await setDoc(doc(db, "users", uid), { lastSeen: { [key]: lastSeen[key] } }, { merge: true });
+}
+function subscribeLastSeen(cb) {
+  return subscribe("lastSeen", cb);
+}
+// パートナー(自分以外)からの新着投稿数
+function getUnseenPostCount() {
+  const myIndex = getMyAuthorIndex();
+  const since = getLastSeen("timeline");
+  return posts.filter((p) => (p.author ?? 0) !== myIndex && p.createdAt > since).length;
 }
 
 // ---- posts ----
@@ -273,21 +320,68 @@ function getNextEvent() {
   return getEvents().find((e) => !e.done && e.date >= todayKey) || null;
 }
 
+// ---- アルバム ----
+function getAlbums() {
+  return [...albums].sort((a, b) => b.createdAt - a.createdAt);
+}
+async function createAlbum(name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return;
+  const docRef = await addDoc(col("albums"), { name: trimmed, createdAt: Date.now() });
+  return docRef.id;
+}
+async function renameAlbum(albumId, name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return;
+  await updateDoc(ref("albums", albumId), { name: trimmed });
+}
+async function removeAlbum(albumId) {
+  await deleteDoc(ref("albums", albumId));
+}
+function subscribeAlbums(cb) {
+  return subscribe("albums", cb);
+}
+// 写真(post:/event:/photo: プレフィックス付きID)をアルバムに割り当てる。albumId=nullで外す
+async function setPhotoAlbum(photoId, albumId) {
+  if (photoId.startsWith("post:")) {
+    await updateDoc(ref("posts", photoId.slice("post:".length)), { albumId: albumId || null });
+  } else if (photoId.startsWith("event:")) {
+    await updateDoc(ref("events", photoId.slice("event:".length)), { albumId: albumId || null });
+  } else if (photoId.startsWith("photo:")) {
+    await updateDoc(ref("photos", photoId.slice("photo:".length)), { albumId: albumId || null });
+  }
+}
+
 // ---- 写真ギャラリー ----
 // 投稿・カレンダー予定に添付された写真に加え、アルバムへ直接追加した写真もまとめて「思い出」として扱う
 function getAllPhotos() {
   const fromPosts = posts
     .filter((p) => p.photo)
-    .map((p) => ({ id: `post:${p.id}`, photo: p.photo, caption: p.text, at: p.createdAt, dateKey: dateKeyOf(p.createdAt) }));
+    .map((p) => ({
+      id: `post:${p.id}`,
+      photo: p.photo,
+      caption: p.text,
+      at: p.createdAt,
+      dateKey: dateKeyOf(p.createdAt),
+      albumId: p.albumId || null,
+    }));
   const fromEvents = events
     .filter((e) => e.photo)
-    .map((e) => ({ id: `event:${e.id}`, photo: e.photo, caption: e.title, at: e.createdAt, dateKey: e.date }));
+    .map((e) => ({
+      id: `event:${e.id}`,
+      photo: e.photo,
+      caption: e.title,
+      at: e.createdAt,
+      dateKey: e.date,
+      albumId: e.albumId || null,
+    }));
   const fromAlbum = standalonePhotos.map((p) => ({
     id: `photo:${p.id}`,
     photo: p.photo,
     caption: p.caption,
     at: p.createdAt,
     dateKey: p.date,
+    albumId: p.albumId || null,
   }));
   return [...fromPosts, ...fromEvents, ...fromAlbum]
     .map((p) => ({ ...p, favorite: photoFavoriteIds.has(p.id) }))
@@ -307,6 +401,7 @@ async function addPhoto(photo, caption, date) {
     caption: (caption || "").trim(),
     date: date || toDateKey(new Date()),
     createdAt: Date.now(),
+    albumId: null,
   });
 }
 // id は `photo:` プレフィックス付き(getAllPhotosが返す形式)のどちらでも受け付ける
@@ -319,7 +414,7 @@ function subscribePhotos(cb) {
 }
 
 async function resetAll() {
-  const names = ["posts", "listItems", "events", "photos"];
+  const names = ["posts", "listItems", "events", "photos", "albums"];
   for (const name of names) {
     const snap = await getDocs(col(name));
     await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
@@ -333,6 +428,11 @@ export const store = {
   setProfile,
   subscribeProfile,
   getDaysTogether,
+  getMyAuthorIndex,
+  getLastSeen,
+  markSeen,
+  subscribeLastSeen,
+  getUnseenPostCount,
   getPosts,
   addPost,
   removePost,
@@ -351,6 +451,12 @@ export const store = {
   removeEvent,
   subscribeEvents,
   getNextEvent,
+  getAlbums,
+  createAlbum,
+  renameAlbum,
+  removeAlbum,
+  subscribeAlbums,
+  setPhotoAlbum,
   getAllPhotos,
   togglePhotoFavorite,
   addPhoto,

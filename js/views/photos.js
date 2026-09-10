@@ -1,10 +1,11 @@
 import { store } from "../store.js";
-import { compressImageFile, showToast, toDateKey, illustration } from "../util.js";
+import { compressImageFile, showToast, toDateKey, illustration, escapeHtml } from "../util.js";
 
 export function mount(root) {
   let filter = "all";
   let pendingPhoto = null;
   let openPhotoId = null;
+  let openAlbumId = null;
 
   root.innerHTML = `
     <section class="screen-hero screen-hero--row">
@@ -47,6 +48,16 @@ export function mount(root) {
         </div>
       </div>
     </div>
+
+    <div class="lightbox" id="picker-overlay">
+      <div class="lightbox__inner" style="max-height:80vh; overflow-y:auto; width:100%;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <span style="color:#fff; font-weight:800;">写真を選ぶ</span>
+          <button class="lightbox__close" id="picker-done">完了</button>
+        </div>
+        <div class="photo-grid" id="picker-grid"></div>
+      </div>
+    </div>
   `;
 
   const addToggle = root.querySelector("#photo-add-toggle");
@@ -66,6 +77,8 @@ export function mount(root) {
   const lightboxImg = root.querySelector("#lightbox-img");
   const lightboxCaption = root.querySelector("#lightbox-caption");
   const lightboxDelete = root.querySelector("#lightbox-delete");
+  const pickerOverlay = root.querySelector("#picker-overlay");
+  const pickerGrid = root.querySelector("#picker-grid");
 
   dateInput.value = toDateKey(new Date());
 
@@ -77,8 +90,139 @@ export function mount(root) {
       </button>`;
   }
 
+  function albumCard(album, photos) {
+    const albumPhotos = photos.filter((p) => p.albumId === album.id);
+    const cover = albumPhotos[0];
+    return `
+      <button class="album-card" data-open-album="${album.id}">
+        <span class="album-card__cover">${cover ? `<img src="${cover.photo}" alt="" />` : "📁"}</span>
+        <span class="album-card__body">
+          <span class="album-card__name">${escapeHtml(album.name)}</span>
+          <span class="album-card__count">${albumPhotos.length}枚</span>
+        </span>
+      </button>`;
+  }
+
+  function renderAlbumList(photos) {
+    const albums = store.getAlbums();
+    contentEl.innerHTML = `
+      <button class="btn btn-primary btn-block" id="album-create-btn" style="margin-bottom:12px;">＋ 新しいアルバムを作る</button>
+      ${
+        albums.length === 0
+          ? `<div class="empty-state">まだアルバムがありません。<br>「ディズニー」「この前遊んだ日」のように名前をつけて作ってみよう。</div>`
+          : `<div class="album-list">${albums.map((a) => albumCard(a, photos)).join("")}</div>`
+      }
+    `;
+    contentEl.querySelector("#album-create-btn").addEventListener("click", async () => {
+      const name = prompt("アルバムの名前を入力してください(例: ディズニーの思い出)");
+      if (!name || !name.trim()) return;
+      try {
+        const id = await store.createAlbum(name);
+        openAlbumId = id;
+        render();
+      } catch {
+        showToast("作成に失敗しました");
+      }
+    });
+    contentEl.querySelectorAll("[data-open-album]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        openAlbumId = btn.dataset.openAlbum;
+        render();
+      });
+    });
+  }
+
+  function renderAlbumDetail(photos) {
+    const album = store.getAlbums().find((a) => a.id === openAlbumId);
+    if (!album) {
+      openAlbumId = null;
+      renderAlbumList(photos);
+      return;
+    }
+    const albumPhotos = photos.filter((p) => p.albumId === openAlbumId);
+    contentEl.innerHTML = `
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+        <button class="calendar-nav__btn" id="album-back-btn" aria-label="戻る">‹</button>
+        <span style="font-weight:800; font-size:15px; flex:1;">${escapeHtml(album.name)}</span>
+        <button class="settings-row__chevron" id="album-rename-btn" style="border:none;background:none;font-size:16px;cursor:pointer;">✏️</button>
+        <button class="settings-row__chevron" id="album-delete-btn" style="border:none;background:none;font-size:16px;cursor:pointer;">🗑️</button>
+      </div>
+      <button class="btn btn-ghost btn-block" id="album-add-photos-btn" style="margin-bottom:12px;">＋ 写真を選んで追加</button>
+      ${
+        albumPhotos.length === 0
+          ? `<div class="empty-state">まだ写真がありません</div>`
+          : `<div class="photo-grid">${albumPhotos.map(tile).join("")}</div>`
+      }
+    `;
+    contentEl.querySelector("#album-back-btn").addEventListener("click", () => {
+      openAlbumId = null;
+      render();
+    });
+    contentEl.querySelector("#album-rename-btn").addEventListener("click", async () => {
+      const name = prompt("新しいアルバム名を入力してください", album.name);
+      if (!name || !name.trim()) return;
+      try {
+        await store.renameAlbum(album.id, name);
+      } catch {
+        showToast("変更に失敗しました");
+      }
+    });
+    contentEl.querySelector("#album-delete-btn").addEventListener("click", async () => {
+      if (!confirm(`「${album.name}」を削除しますか?(写真自体は残ります)`)) return;
+      try {
+        await store.removeAlbum(album.id);
+        openAlbumId = null;
+      } catch {
+        showToast("削除に失敗しました");
+      }
+    });
+    contentEl.querySelector("#album-add-photos-btn").addEventListener("click", () => openPicker());
+  }
+
+  function openPicker() {
+    const photos = store.getAllPhotos();
+    pickerGrid.innerHTML = photos
+      .map(
+        (p) => `
+      <button class="photo-tile" data-pick="${p.id}">
+        <img src="${p.photo}" alt="" />
+        ${p.albumId === openAlbumId ? `<span class="photo-tile__fav is-active" style="pointer-events:none;">✓</span>` : ""}
+      </button>`
+      )
+      .join("");
+    pickerOverlay.classList.add("is-visible");
+  }
+  pickerGrid.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-pick]");
+    if (!btn) return;
+    const id = btn.dataset.pick;
+    const photos = store.getAllPhotos();
+    const photo = photos.find((p) => p.id === id);
+    const nextAlbumId = photo.albumId === openAlbumId ? null : openAlbumId;
+    try {
+      await store.setPhotoAlbum(id, nextAlbumId);
+      openPicker();
+    } catch {
+      showToast("更新に失敗しました");
+    }
+  });
+  root.querySelector("#picker-done").addEventListener("click", () => {
+    pickerOverlay.classList.remove("is-visible");
+    render();
+  });
+  pickerOverlay.addEventListener("click", (e) => {
+    if (e.target === pickerOverlay) pickerOverlay.classList.remove("is-visible");
+  });
+
   function render() {
     const photos = store.getAllPhotos();
+
+    if (filter === "album") {
+      if (openAlbumId) renderAlbumDetail(photos);
+      else renderAlbumList(photos);
+      return;
+    }
+
     let visible = photos;
     if (filter === "favorite") visible = photos.filter((p) => p.favorite);
 
@@ -89,25 +233,6 @@ export function mount(root) {
       </div>`;
       return;
     }
-
-    if (filter === "album") {
-      const groups = new Map();
-      photos.forEach((p) => {
-        const key = p.dateKey.slice(0, 7);
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(p);
-      });
-      contentEl.innerHTML = [...groups.entries()]
-        .map(([month, items]) => {
-          const [y, m] = month.split("-");
-          return `
-          <div class="photo-album__label">${y}年${Number(m)}月</div>
-          <div class="photo-grid">${items.map(tile).join("")}</div>`;
-        })
-        .join("");
-      return;
-    }
-
     if (visible.length === 0) {
       contentEl.innerHTML = `<div class="empty-state">お気に入りの写真はまだありません</div>`;
       return;
@@ -119,6 +244,7 @@ export function mount(root) {
     const btn = e.target.closest(".segmented__item");
     if (!btn) return;
     filter = btn.dataset.filter;
+    if (filter !== "album") openAlbumId = null;
     filtersEl.querySelectorAll(".segmented__item").forEach((b) => b.classList.toggle("is-active", b === btn));
     render();
   });
@@ -195,6 +321,11 @@ export function mount(root) {
   });
 
   render();
-  const unsubs = [store.subscribePosts(render), store.subscribeEvents(render), store.subscribePhotos(render)];
+  const unsubs = [
+    store.subscribePosts(render),
+    store.subscribeEvents(render),
+    store.subscribePhotos(render),
+    store.subscribeAlbums(render),
+  ];
   return () => unsubs.forEach((fn) => fn());
 }

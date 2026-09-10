@@ -1,10 +1,11 @@
 import { THEMES, getTheme, setTheme } from "../theme.js";
 import { store } from "../store.js";
 import { logOut } from "../auth.js";
-import { showToast, illustration } from "../util.js";
+import { showToast, illustration, avatarHtml, compressImageFile } from "../util.js";
 
 export function mount(root) {
   const profile = store.getProfile();
+  const pendingPhotos = profile.people.map((p) => p.photo || null);
 
   root.innerHTML = `
     <section class="screen-hero">
@@ -24,11 +25,16 @@ export function mount(root) {
           .map(
             (p, i) => `
           <div class="profile-editor__person">
-            <input class="input profile-editor__avatar" maxlength="2" id="avatar-${i}" value="${p.avatar}" />
+            <button type="button" class="profile-editor__photo-btn" id="photo-btn-${i}" title="写真を選ぶ">
+              ${avatarHtml(p, "profile-editor__photo-preview")}
+            </button>
+            <input type="file" accept="image/*" id="photo-input-${i}" hidden />
+            <input class="input profile-editor__avatar" maxlength="2" id="avatar-${i}" value="${p.avatar}" placeholder="絵文字" />
             <input class="input profile-editor__name" maxlength="12" id="name-${i}" value="${p.name}" placeholder="なまえ" />
           </div>`
           )
           .join("")}
+        <div style="font-size:11px;color:var(--color-text-muted);margin-top:-6px;">アイコンをタップすると写真に変更できます(絵文字より優先されます)</div>
         <div class="profile-editor__date-row">
           <label for="start-date">出会った日</label>
           <input class="input" type="date" id="start-date" value="${profile.startDate || ""}" />
@@ -82,12 +88,29 @@ export function mount(root) {
     showToast("テーマを変更しました");
   });
 
+  profile.people.forEach((p, i) => {
+    const photoBtn = root.querySelector(`#photo-btn-${i}`);
+    const photoInput = root.querySelector(`#photo-input-${i}`);
+    photoBtn.addEventListener("click", () => photoInput.click());
+    photoInput.addEventListener("change", async () => {
+      const file = photoInput.files?.[0];
+      if (!file) return;
+      try {
+        pendingPhotos[i] = await compressImageFile(file, { maxDim: 300, quality: 0.7 });
+        photoBtn.innerHTML = avatarHtml({ ...p, photo: pendingPhotos[i] }, "profile-editor__photo-preview");
+      } catch {
+        showToast("写真の読み込みに失敗しました");
+      }
+    });
+  });
+
   root.querySelector("#profile-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const submitBtn = e.target.querySelector("button[type=submit]");
     const people = profile.people.map((p, i) => ({
       avatar: root.querySelector(`#avatar-${i}`).value.trim() || p.avatar,
       name: root.querySelector(`#name-${i}`).value.trim() || p.name,
+      photo: pendingPhotos[i],
     }));
     const startDate = root.querySelector("#start-date").value || null;
     submitBtn.disabled = true;

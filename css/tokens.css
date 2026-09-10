@@ -1,0 +1,176 @@
+/* テーマ定義。data-theme を切り替えるとこれらの変数が入れ替わる */
+
+:root[data-theme="classic"] {
+  --color-bg: #FFFDF7;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #FFF1D2;
+  --color-primary: #1261C9;
+  --color-primary-strong: #0D4A9C;
+  --color-on-primary: #FFFFFF;
+  --color-accent: #FFC928;
+  --color-on-accent: #202020;
+  --color-text: #202020;
+  --color-text-muted: #7C7266;
+  --color-border: #F1E2BE;
+  --color-danger: #FF4538;
+  --color-success: #159447;
+}
+
+:root[data-theme="natural"] {
+  --color-bg: #F6F1E7;
+  --color-surface: #FFFDF8;
+  --color-surface-alt: #EFE6D6;
+  --color-primary: #7C9473;
+  --color-primary-strong: #5F7757;
+  --color-on-primary: #FFFFFF;
+  --color-accent: #E3A857;
+  --color-on-accent: #3B2E1E;
+  --color-text: #3B2E1E;
+  --color-text-muted: #8A7A64;
+  --color-border: #E4D8C2;
+  --color-danger: #C0553F;
+  --color-success: #6B8E4E;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #12151C;
+  --color-surface: #1B2029;
+  --color-surface-alt: #232936;
+  --color-primary: #4C8DFF;
+  --color-primary-strong: #6FA1FF;
+  --color-on-primary: #0B1220;
+  --color-accent: #FFDA1A;
+  --color-on-accent: #14213D;
+  --color-text: #EDF1F7;
+  --color-text-muted: #9AA6BC;
+  --color-border: #2B3140;
+  --color-danger: #FF6B5E;
+  --color-success: #4FCB86;
+}
+
+:root[data-theme="cherry"] {
+  --color-bg: #FFF3F4;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #FFE3E6;
+  --color-primary: #D6336C;
+  --color-primary-strong: #A61E4D;
+  --color-on-primary: #FFFFFF;
+  --color-accent: #40C463;
+  --color-on-accent: #0B3D22;
+  --color-text: #4A1526;
+  --color-text-muted: #9C6472;
+  --color-border: #F6C9D2;
+  --color-danger: #C1121F;
+  --color-success: #2E8B57;
+}
+
+:root[data-theme="soda"] {
+  --color-bg: #F2FBF6;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #DFF6E8;
+  --color-primary: #3FB68A;
+  --color-primary-strong: #268866;
+  --color-on-primary: #FFFFFF;
+  --color-accent: #FF6F61;
+  --color-on-accent: #3B1108;
+  --color-text: #16362A;
+  --color-text-muted: #6E8C80;
+  --color-border: #CDEEDD;
+  --color-danger: #E4572E;
+  --color-success: #2E8B57;
+}
+
+:root[data-theme="retro"] {
+  --color-bg: #F4E8D0;
+  --color-surface: #FFF6E3;
+  --color-surface-alt: #EAD9AE;
+  --color-primary: #C9622A;
+  --color-primary-strong: #9C4A1E;
+  --color-on-primary: #FFF6E3;
+  --color-accent: #4C7A5A;
+  --color-on-accent: #F4E8D0;
+  --color-text: #3B2A1A;
+  --color-text-muted: #8A7358;
+  --color-border: #DCC79A;
+  --color-danger: #B0413E;
+  --color-success: #4C7A5A;
+}
+
+:root[data-theme="mono"] {
+  --color-bg: #F2F2F2;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #E6E6E6;
+  --color-primary: #2B2B2B;
+  --color-primary-strong: #000000;
+  --color-on-primary: #FFFFFF;
+  --color-accent: #B5B5B5;
+  --color-on-accent: #1A1A1A;
+  --color-text: #1A1A1A;
+  --color-text-muted: #7A7A7A;
+  --color-border: #D8D8D8;
+  --color-danger: #8A2E2E;
+  --color-success: #3A5A3A;
+}
+
+:root {
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-pill: 999px;
+  --shadow-card: 0 2px 8px rgba(32, 32, 32, 0.06);
+  --shadow-pop: 0 6px 18px rgba(32, 32, 32, 0.12);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+
+  /* リストのカテゴリ色。テーマが変わっても常に同じ色で見分けられるようにする */
+  --cat-wanna-go: #1261C9;
+  --cat-wanna-go-bg: #E5EFFC;
+  --cat-wanna-do: #D89A12;
+  --cat-wanna-do-bg: #FFF3D2;
+  --cat-wanna-share: #FF7FA4;
+  --cat-wanna-share-bg: #FFEAF1;
+}
+
+:root[data-theme="dark"] {
+  --cat-wanna-go-bg: #1B2A45;
+  --cat-wanna-do-bg: #3A2E15;
+  --cat-wanna-share-bg: #3A1B22;
+}
+
+:root {
+  --font-display: "Baloo 2", var(--font-family);
+
+  /* 画面の背景はスクラップブックのように全画面共通の柔らかいクリームで統一し、
+     画面ごとの個性は見出しの色とイラスト素材だけで出す */
+  --screen-home-bg: #FFFDF7;
+  --screen-home-hero: #1261C9;
+  --screen-timeline-bg: #FFFDF7;
+  --screen-timeline-hero: #FF7FA4;
+  --screen-list-bg: #FFFDF7;
+  --screen-list-hero: #FF4538;
+  --screen-calendar-bg: #FFFDF7;
+  --screen-calendar-hero: #159447;
+  --screen-photos-bg: #FFFDF7;
+  --screen-photos-hero: #FF4538;
+  --screen-settings-bg: #FFFDF7;
+  --screen-settings-hero: #1261C9;
+}
+:root[data-theme="dark"] {
+  --screen-home-bg: #1B1B18;
+  --screen-home-hero: #F2A64D;
+  --screen-timeline-bg: #1B1B18;
+  --screen-timeline-hero: #FF9BB8;
+  --screen-list-bg: #1B1B18;
+  --screen-list-hero: #FF7A63;
+  --screen-calendar-bg: #1B1B18;
+  --screen-calendar-hero: #4FCB86;
+  --screen-photos-bg: #1B1B18;
+  --screen-photos-hero: #FF8A7A;
+  --screen-settings-bg: #1B1B18;
+  --screen-settings-hero: #6FA1FF;
+}

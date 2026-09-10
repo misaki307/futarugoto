@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Firebase Console → Firestore Database → ルール タブに、この内容をそのまま貼り付けてください。
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(coupleId) {
+      return isSignedIn() &&
+        request.auth.uid in get(/databases/$(database)/documents/couples/$(coupleId)).data.members;
+    }
+
+    // ユーザー本人だけが自分の users/{uid} を読み書きできる
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /couples/{coupleId} {
+      // 新規作成: ログインしていれば誰でも新しいカップルを作れる
+      allow create: if isSignedIn();
+      // 閲覧・更新: メンバー本人 or (2人目として)自分のuidを追加する参加操作のみ許可
+      allow read, update: if isMember(coupleId) || (
+        isSignedIn() &&
+        resource.data.members.size() < 2 &&
+        request.resource.data.members == resource.data.members.concat([request.auth.uid])
+      );
+
+      // カップル配下のサブコレクション(posts/listItems/events/photos)はメンバーのみ読み書き可
+      match /{collection}/{docId} {
+        allow read, write: if isMember(coupleId);
+      }
+    }
+  }
+}

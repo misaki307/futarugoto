@@ -247,6 +247,20 @@ function toggleEventDone(id) {
   if (!event) return;
   return updateDoc(ref("events", id), { done: !event.done });
 }
+// 既存の予定を編集する。指定したフィールドだけを上書きし、他は変更しない
+// (作成日時や完了状態、二人のどちらが作ったかなどはそのまま残る)
+async function updateEvent(id, { date, time, title, memo, photo }) {
+  const trimmedTitle = (title || "").trim();
+  if (!trimmedTitle) return;
+  assertPhotoSize(photo);
+  await updateDoc(ref("events", id), {
+    date,
+    time: time || null,
+    title: trimmedTitle,
+    memo: (memo || "").trim(),
+    photo: photo || null,
+  });
+}
 function removeEvent(id) {
   return deleteDoc(ref("events", id));
 }
@@ -332,6 +346,7 @@ export const store = {
   subscribeLists,
   getEvents,
   addEvent,
+  updateEvent,
   toggleEventDone,
   removeEvent,
   subscribeEvents,

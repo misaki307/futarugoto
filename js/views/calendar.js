@@ -10,6 +10,7 @@ export function mount(root) {
   let selectedKey = toDateKey(today);
   let allEvents = [];
   let pendingEventPhoto = null;
+  let editingId = null;
 
   root.innerHTML = `
     <section class="screen-hero">
@@ -34,7 +35,9 @@ export function mount(root) {
   const daySection = root.querySelector("#cal-day-section");
 
   function eventsOn(dateKey) {
-    return allEvents.filter((e) => e.date === dateKey);
+    return allEvents
+      .filter((e) => e.date === dateKey)
+      .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   }
 
   function renderGrid() {
@@ -53,11 +56,15 @@ export function mount(root) {
         const dateKey = toDateKey(new Date(viewYear, viewMonth, d));
         const isToday = dateKey === toDateKey(today);
         const isSelected = dateKey === selectedKey;
-        const hasEvents = eventsOn(dateKey).length > 0;
+        const dayEvents = eventsOn(dateKey);
+        const hasEvents = dayEvents.length > 0;
+        const label = hasEvents
+          ? escapeHtml(dayEvents[0].title) + (dayEvents.length > 1 ? ` 他${dayEvents.length - 1}件` : "")
+          : "";
         return `
         <button class="calendar-cell ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${hasEvents ? "has-event" : ""}" data-date="${dateKey}">
-          <span>${d}</span>
-          ${hasEvents ? `<span class="calendar-dot"></span>` : ""}
+          <span class="calendar-cell__date">${d}</span>
+          ${hasEvents ? `<span class="calendar-cell__label">${label}</span>` : ""}
         </button>`;
       })
       .join("");
@@ -66,7 +73,8 @@ export function mount(root) {
 
   function renderDaySection() {
     pendingEventPhoto = null;
-    const dayEvents = eventsOn(selectedKey).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+    editingId = null;
+    const dayEvents = eventsOn(selectedKey);
     const [, m, d] = selectedKey.split("-").map(Number);
 
     daySection.innerHTML = `
@@ -86,6 +94,7 @@ export function mount(root) {
               <div class="event-card__title">${escapeHtml(ev.title)}</div>
               ${ev.memo ? `<div class="event-card__memo">${escapeHtml(ev.memo)}</div>` : ""}
             </div>
+            <button class="event-card__edit" data-action="edit" data-id="${ev.id}">編集</button>
             <button class="event-card__del" data-action="delete" data-id="${ev.id}">削除</button>
           </div>`
                 )
@@ -106,21 +115,70 @@ export function mount(root) {
             <button type="button" class="event-form__photo-remove" id="ev-photo-remove">外す</button>
           </div>
         </div>
-        <button class="btn btn-primary btn-block" type="submit">この日に予定を追加</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary btn-block" type="submit" id="ev-submit">この日に予定を追加</button>
+          <button class="btn btn-ghost" type="button" id="ev-cancel-edit" hidden>キャンセル</button>
+        </div>
       </form>
     `;
 
-    daySection.querySelector("#event-list").addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-action]");
-      if (!btn) return;
-      if (btn.dataset.action === "delete") store.removeEvent(btn.dataset.id);
-      else if (btn.dataset.action === "toggle-done") store.toggleEventDone(btn.dataset.id);
-    });
-
+    const form = daySection.querySelector("#event-form");
+    const titleInput = daySection.querySelector("#ev-title");
+    const timeInput = daySection.querySelector("#ev-time");
+    const memoInput = daySection.querySelector("#ev-memo");
+    const submitBtn = daySection.querySelector("#ev-submit");
+    const cancelEditBtn = daySection.querySelector("#ev-cancel-edit");
     const photoBtn = daySection.querySelector("#ev-photo-btn");
     const photoInput = daySection.querySelector("#ev-photo-input");
     const photoPreview = daySection.querySelector("#ev-photo-preview");
     const photoPreviewImg = daySection.querySelector("#ev-photo-preview-img");
+
+    function clearPhoto() {
+      pendingEventPhoto = null;
+      photoInput.value = "";
+      photoPreview.classList.remove("is-visible");
+      photoPreviewImg.src = "";
+    }
+
+    function exitEditMode() {
+      editingId = null;
+      form.reset();
+      clearPhoto();
+      submitBtn.textContent = "この日に予定を追加";
+      cancelEditBtn.hidden = true;
+    }
+
+    daySection.querySelector("#event-list").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const id = btn.dataset.id;
+      if (btn.dataset.action === "delete") {
+        if (editingId === id) exitEditMode();
+        store.removeEvent(id);
+      } else if (btn.dataset.action === "toggle-done") {
+        store.toggleEventDone(id);
+      } else if (btn.dataset.action === "edit") {
+        const ev = dayEvents.find((e2) => e2.id === id);
+        if (!ev) return;
+        editingId = id;
+        titleInput.value = ev.title;
+        timeInput.value = ev.time || "";
+        memoInput.value = ev.memo || "";
+        pendingEventPhoto = ev.photo || null;
+        if (ev.photo) {
+          photoPreviewImg.src = ev.photo;
+          photoPreview.classList.add("is-visible");
+        } else {
+          clearPhoto();
+        }
+        submitBtn.textContent = "更新する";
+        cancelEditBtn.hidden = false;
+        form.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+
+    cancelEditBtn.addEventListener("click", exitEditMode);
+
     photoBtn.addEventListener("click", () => photoInput.click());
     photoInput.addEventListener("change", async () => {
       const file = photoInput.files?.[0];
@@ -139,22 +197,25 @@ export function mount(root) {
       photoPreview.classList.remove("is-visible");
     });
 
-    daySection.querySelector("#event-form").addEventListener("submit", async (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const title = daySection.querySelector("#ev-title").value;
-      const time = daySection.querySelector("#ev-time").value;
-      const memo = daySection.querySelector("#ev-memo").value;
-      const submitBtn = e.target.querySelector("button[type=submit]");
+      const title = titleInput.value;
+      const time = timeInput.value;
+      const memo = memoInput.value;
       submitBtn.disabled = true;
       try {
-        await store.addEvent({ date: selectedKey, time, title, memo, photo: pendingEventPhoto });
+        if (editingId) {
+          await store.updateEvent(editingId, { date: selectedKey, time, title, memo, photo: pendingEventPhoto });
+        } else {
+          await store.addEvent({ date: selectedKey, time, title, memo, photo: pendingEventPhoto });
+        }
       } catch {
         showToast("保存に失敗しました。写真が大きすぎるかもしれません");
         submitBtn.disabled = false;
         return;
       }
       submitBtn.disabled = false;
-      e.target.reset();
+      exitEditMode();
     });
   }
 

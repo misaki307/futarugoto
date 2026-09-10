@@ -756,7 +756,7 @@
 }
 .calendar-cell {
   font-family: inherit;
-  aspect-ratio: 1;
+  min-height: 54px;
   border: none;
   background: var(--color-surface);
   border-radius: var(--radius-sm);
@@ -765,9 +765,11 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
+  padding: 4px 2px;
   cursor: pointer;
   color: var(--color-text);
   font-size: 13px;
+  overflow: hidden;
 }
 .calendar-cell.is-outside {
   opacity: 0.3;
@@ -775,26 +777,25 @@
 .calendar-cell.is-today {
   border: 2px solid var(--color-primary);
 }
-.calendar-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: transparent;
+.calendar-cell__label {
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .calendar-cell.has-event {
-  background: color-mix(in srgb, var(--hero-color, var(--color-primary)) 24%, var(--color-surface));
+  background: color-mix(in srgb, var(--hero-color, var(--color-primary)) 22%, var(--color-surface));
   color: var(--hero-color, var(--color-primary));
-  font-weight: 800;
 }
-.calendar-cell.has-event .calendar-dot {
-  background: var(--hero-color, var(--color-primary));
+.calendar-cell.has-event .calendar-cell__date {
+  font-weight: 800;
 }
 .calendar-cell.is-selected {
   background: var(--color-primary);
   color: var(--color-on-primary);
-}
-.calendar-cell.is-selected .calendar-dot {
-  background: var(--color-on-primary);
 }
 
 .calendar-nav__deco {
@@ -863,6 +864,15 @@
   font-size: 12px;
   color: var(--color-text-muted);
   margin-top: 2px;
+}
+.event-card__edit {
+  font-family: inherit;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
 }
 .event-card__del {
   font-family: inherit;

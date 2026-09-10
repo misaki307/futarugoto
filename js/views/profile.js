@@ -123,9 +123,8 @@ export function mount(root, switchView) {
           <button class="profile-page__icon-btn" id="profile-friends-btn" type="button" aria-label="友達一覧">👥</button>
         </div>
 
-        <div class="profile-hero" style="--profile-bg:${theme.bg}; --profile-bg2:${theme.bg2};">
-          <div class="profile-hero__greeting">${escapeHtml(theme.greeting)}</div>
-          <img class="profile-hero__character" src="${theme.character}" alt="" />
+        <div class="profile-hero" style="--profile-bg:${theme.bg};">
+          <img class="profile-hero__img" src="${theme.hero}" alt="${escapeHtml(theme.label)}テーマ" />
           <div class="profile-hero__icon-wrap">
             <span class="profile-hero__icon">${avatarHtml(person, "profile-hero__icon-img")}</span>
             ${isSelf ? `<button class="profile-hero__icon-edit" id="profile-icon-edit-btn" type="button" aria-label="アイコンを変更">📷</button>` : ""}

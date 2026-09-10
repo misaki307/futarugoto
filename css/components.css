@@ -1453,39 +1453,15 @@
 .profile-hero {
   position: relative;
   border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-4) 52px;
   margin-bottom: 40px;
   background: var(--profile-bg, var(--color-surface-alt));
   text-align: center;
+  overflow: hidden;
 }
-.profile-hero::after {
-  content: "";
-  position: absolute;
-  z-index: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 40px;
-  background: var(--profile-bg2, var(--color-surface));
-  border-radius: 50% 50% var(--radius-lg) var(--radius-lg) / 100% 100% var(--radius-lg) var(--radius-lg);
-}
-.profile-hero__greeting {
-  position: relative;
-  z-index: 1;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: var(--space-2);
-}
-.profile-hero__character {
-  position: relative;
-  z-index: 1;
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
+.profile-hero__img {
   display: block;
-  margin: 0 auto;
+  width: 100%;
+  height: auto;
 }
 .profile-hero__icon-wrap {
   position: absolute;

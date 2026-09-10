@@ -1,29 +1,22 @@
 // プロフィールページ専用の「背景テーマ」。
 // アプリ全体の配色(theme.js)とは完全に別物で、ひとりひとりが自分のプロフィールにだけ設定する。
-// テーマを選ぶと、背景色・メインキャラクター・吹き出しの一言が一緒に切り替わる。
+// テーマを選ぶと、背景色・メインキャラクター・装飾がまとめて描かれた画像(hero)が切り替わる。
+// hero画像は提供されたデザイン素材(OUR_DAYS_background_themes)から、ステータスバー/ヘッダー部分を
+// 除いて背景・キャラクター・あいさつ文だけを残す形で切り出したもの。
 
 export const PROFILE_THEMES = [
-  { id: "pink", label: "ピンク", sub: "うさぎ", character: "assets/characters/rabbit.png", bg: "#FFE3EC", bg2: "#FFF6F8", accent: "#FF6F91", greeting: "GOOD DAY!" },
-  { id: "yellow", label: "イエロー", sub: "いぬ", character: "assets/characters/dog.png", bg: "#FFF3C4", bg2: "#FFFBEA", accent: "#E8A400", greeting: "HELLO!" },
-  { id: "blue", label: "ブルー", sub: "さかな", character: "assets/characters/fish.png", bg: "#DCEEFF", bg2: "#F0F8FF", accent: "#2F7BD9", greeting: "GOOD DAY!" },
-  { id: "green", label: "グリーン", sub: "はっぱ", character: "assets/characters/leaf.png", bg: "#E1F5E6", bg2: "#F1FAF3", accent: "#2FA360", greeting: "いつもありがとう" },
-  { id: "purple", label: "パープル", sub: "はな", character: "assets/characters/flower.png", bg: "#F1E6FB", bg2: "#F8F2FD", accent: "#9B6BD1", greeting: "すてきな毎日に" },
-  { id: "red", label: "レッド", sub: "はーと", character: "assets/characters/heart-buddy.png", bg: "#FFE1E1", bg2: "#FFF3F3", accent: "#E5484D", greeting: "LOVE YOU!" },
-  { id: "beige", label: "ベージュ", sub: "食パン", character: "assets/characters/bread.png", bg: "#FBF1E3", bg2: "#FFFAF2", accent: "#C08A3E", greeting: "のんびりいこう" },
-  { id: "lightblue", label: "ライトブルー", sub: "とり", character: "assets/characters/bird.png", bg: "#E4F6FB", bg2: "#F2FBFD", accent: "#2E9DB8", greeting: "GOOD MORNING!" },
-  { id: "orange", label: "オレンジ", sub: "ほし", character: "assets/characters/star.png", bg: "#FFEBD6", bg2: "#FFF6EC", accent: "#FF9540", greeting: "GOOD DAY!" },
-  { id: "cherry", label: "チェリー", sub: "さくらんぼ", character: "assets/characters/cherries.png", bg: "#FFE0EA", bg2: "#FFF1F5", accent: "#D6336C", greeting: "あまずっぱい毎日" },
-  { id: "navy", label: "ネイビー", sub: "ねこ", character: "assets/characters/cat.png", bg: "#E4E8F5", bg2: "#F1F3FA", accent: "#3B4A78", greeting: "おつかれさま" },
-  {
-    id: "rainbow",
-    label: "レインボー",
-    sub: "にじ",
-    character: "assets/decorations/rainbow.png",
-    bg: "linear-gradient(135deg, #FFE3EC, #FFF3C4, #DCEEFF, #E1F5E6, #F1E6FB)",
-    bg2: "#FFFDF7",
-    accent: "#FF6F91",
-    greeting: "自分だけのいろどりを",
-  },
+  { id: "pink", label: "ピンク", sub: "うさぎ", hero: "assets/themes/pink-hero.png", character: "assets/characters/rabbit.png", bg: "#FFE3EC" },
+  { id: "yellow", label: "イエロー", sub: "いぬ", hero: "assets/themes/yellow-hero.png", character: "assets/characters/dog.png", bg: "#FFF3C4" },
+  { id: "blue", label: "ブルー", sub: "さかな", hero: "assets/themes/blue-hero.png", character: "assets/characters/fish.png", bg: "#DCEEFF" },
+  { id: "green", label: "グリーン", sub: "はっぱ", hero: "assets/themes/green-hero.png", character: "assets/characters/leaf.png", bg: "#E1F5E6" },
+  { id: "purple", label: "パープル", sub: "はな", hero: "assets/themes/purple-hero.png", character: "assets/characters/flower.png", bg: "#F1E6FB" },
+  { id: "red", label: "レッド", sub: "はーと", hero: "assets/themes/red-hero.png", character: "assets/characters/heart-buddy.png", bg: "#FFE1E1" },
+  { id: "beige", label: "ベージュ", sub: "食パン", hero: "assets/themes/beige-hero.png", character: "assets/characters/bread.png", bg: "#FBF1E3" },
+  { id: "lightblue", label: "ライトブルー", sub: "とり", hero: "assets/themes/lightblue-hero.png", character: "assets/characters/bird.png", bg: "#E4F6FB" },
+  { id: "orange", label: "オレンジ", sub: "ほし", hero: "assets/themes/orange-hero.png", character: "assets/characters/star.png", bg: "#FFEBD6" },
+  { id: "cherry", label: "チェリー", sub: "さくらんぼ", hero: "assets/themes/cherry-hero.png", character: "assets/characters/cherries.png", bg: "#FFE0EA" },
+  { id: "navy", label: "ネイビー", sub: "ねこ", hero: "assets/themes/navy-hero.png", character: "assets/characters/cat.png", bg: "#E4E8F5" },
+  { id: "rainbow", label: "レインボー", sub: "にじ", hero: "assets/themes/rainbow-hero.png", character: "assets/decorations/rainbow.png", bg: "#FFF6E9" },
 ];
 
 export function getProfileTheme(id) {

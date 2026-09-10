@@ -403,7 +403,8 @@ function consumePendingAlbumOpen() {
   return id;
 }
 // アルバムに写真を直接追加する(投稿や予定に紐付かない単独の思い出)
-async function addPhoto(photo, caption, date) {
+// albumIdを指定すると、追加と同時にそのアルバムに入れる
+async function addPhoto(photo, caption, date, albumId) {
   if (!photo) return;
   assertPhotoSize(photo);
   await addDoc(col("photos"), {
@@ -411,7 +412,7 @@ async function addPhoto(photo, caption, date) {
     caption: (caption || "").trim(),
     date: date || toDateKey(new Date()),
     createdAt: Date.now(),
-    albumId: null,
+    albumId: albumId || null,
   });
 }
 // id は `photo:` プレフィックス付き(getAllPhotosが返す形式)のどちらでも受け付ける

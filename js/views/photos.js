@@ -55,6 +55,8 @@ export function mount(root) {
       </div>
     </div>
 
+    <input type="file" accept="image/*" id="album-photo-input" hidden />
+
     <div class="lightbox" id="picker-overlay">
       <div class="lightbox__inner" style="max-height:80vh; overflow-y:auto; width:100%;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
@@ -85,6 +87,20 @@ export function mount(root) {
   const lightboxDelete = root.querySelector("#lightbox-delete");
   const pickerOverlay = root.querySelector("#picker-overlay");
   const pickerGrid = root.querySelector("#picker-grid");
+  const albumPhotoInput = root.querySelector("#album-photo-input");
+
+  albumPhotoInput.addEventListener("change", async () => {
+    const file = albumPhotoInput.files?.[0];
+    albumPhotoInput.value = "";
+    if (!file || !openAlbumId) return;
+    try {
+      const compressed = await compressImageFile(file);
+      await store.addPhoto(compressed, "", toDateKey(new Date()), openAlbumId);
+      showToast("写真を追加しました");
+    } catch {
+      showToast("追加に失敗しました。写真が大きすぎるかもしれません");
+    }
+  });
 
   dateInput.value = toDateKey(new Date());
 
@@ -153,7 +169,10 @@ export function mount(root) {
         <button class="settings-row__chevron" id="album-rename-btn" style="border:none;background:none;font-size:16px;cursor:pointer;">✏️</button>
         <button class="settings-row__chevron" id="album-delete-btn" style="border:none;background:none;font-size:16px;cursor:pointer;">🗑️</button>
       </div>
-      <button class="btn btn-ghost btn-block" id="album-add-photos-btn" style="margin-bottom:12px;">＋ 写真を選んで追加</button>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button class="btn btn-primary" id="album-upload-btn" style="flex:1;">📷 新しい写真を追加</button>
+        <button class="btn btn-ghost" id="album-add-photos-btn" style="flex:1;">＋ 既存の写真から選ぶ</button>
+      </div>
       ${
         albumPhotos.length === 0
           ? `<div class="empty-state">まだ写真がありません</div>`
@@ -183,6 +202,7 @@ export function mount(root) {
       }
     });
     contentEl.querySelector("#album-add-photos-btn").addEventListener("click", () => openPicker());
+    contentEl.querySelector("#album-upload-btn").addEventListener("click", () => albumPhotoInput.click());
   }
 
   function openPicker() {

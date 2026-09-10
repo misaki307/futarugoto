@@ -342,6 +342,27 @@
   display: block;
 }
 
+.profile-room__hero-btn {
+  display: block;
+  width: calc(100% + var(--space-4) * 2);
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.profile-hero.profile-hero--compact {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  margin-bottom: 0;
+}
+.profile-room__summary {
+  padding-top: 48px;
+}
+.profile-room__summary .profile-card__name {
+  font-size: 18px;
+}
+
 .profile-quickedit {
   margin: 0 10px var(--space-5) 0;
 }

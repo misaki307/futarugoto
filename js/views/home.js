@@ -1,10 +1,17 @@
 import { store } from "../store.js";
 import { escapeHtml, formatRelativeTime, illustration, sticker, avatarHtml, compressImageFile, showToast } from "../util.js";
+import { getProfileTheme } from "../profileThemes.js";
 
 function formatEventDate(dateKey) {
   const [, m, d] = dateKey.split("-").map(Number);
   const dow = "日月火水木金土"[new Date(dateKey).getDay()];
   return `${m}/${d}(${dow})`;
+}
+
+function formatBirthday(dateStr) {
+  if (!dateStr) return "未設定";
+  const parts = dateStr.split("-").map(Number);
+  return `${parts[1]}月${parts[2]}日`;
 }
 
 export function mount(root, switchView) {
@@ -24,14 +31,27 @@ export function mount(root, switchView) {
     const me = profile.people[myIndex] || profile.people[0];
     const albums = store.getAlbums();
     const allPhotos = store.getAllPhotos();
+    const myTheme = getProfileTheme(me.profileTheme);
 
     root.innerHTML = `
       <section class="profile-room card">
-        <div class="profile-room__top">
-          <button class="profile-room__avatar-btn" data-edit-profile="${myIndex}">${avatarHtml(me, "profile-room__avatar")}</button>
-          <div class="profile-room__info">
-            <div class="profile-room__name">${escapeHtml(me.name)}</div>
-            <div class="profile-room__bio">${me.bio ? escapeHtml(me.bio) : "タップしてひとことを設定"}</div>
+        <button class="profile-room__hero-btn" id="profile-room-open-btn" type="button">
+          <div class="profile-hero profile-hero--compact" style="--profile-bg:${myTheme.bg};">
+            <img class="profile-hero__img" src="${myTheme.hero}" alt="" />
+            <div class="profile-hero__icon-wrap">
+              <span class="profile-hero__icon">${avatarHtml(me, "profile-hero__icon-img")}</span>
+              <span class="profile-hero__icon-edit" aria-hidden="true">📷</span>
+            </div>
+          </div>
+        </button>
+        <div class="profile-room__summary">
+          <div class="profile-card__name">${escapeHtml(me.name)}</div>
+          <div class="profile-card__bio">${me.bio ? escapeHtml(me.bio) : "タップしてプロフィールを編集"}</div>
+          <div class="profile-info-grid">
+            <div class="profile-info-row"><span class="profile-info-row__icon">💫</span><span class="profile-info-row__label">MBTI</span><span class="profile-info-row__value">${me.mbti ? escapeHtml(me.mbti) : "未設定"}</span></div>
+            <div class="profile-info-row"><span class="profile-info-row__icon">🩸</span><span class="profile-info-row__label">血液型</span><span class="profile-info-row__value">${me.bloodType ? escapeHtml(me.bloodType) : "未設定"}</span></div>
+            <div class="profile-info-row"><span class="profile-info-row__icon">🎂</span><span class="profile-info-row__label">誕生日</span><span class="profile-info-row__value">${formatBirthday(me.birthday)}</span></div>
+            <div class="profile-info-row"><span class="profile-info-row__icon">⭐</span><span class="profile-info-row__label">好きなもの</span><span class="profile-info-row__value">${me.likes ? escapeHtml(me.likes) : "未設定"}</span></div>
           </div>
         </div>
         <div class="profile-room__highlights">
@@ -199,6 +219,10 @@ export function mount(root, switchView) {
         store.requestOpenProfile(Number(btn.dataset.editProfile));
         switchView("profile");
       });
+    });
+    root.querySelector("#profile-room-open-btn").addEventListener("click", () => {
+      store.requestOpenProfile(myIndex);
+      switchView("profile");
     });
 
     // ---- ホームからのクイック投稿 ----

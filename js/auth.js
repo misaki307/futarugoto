@@ -18,9 +18,6 @@ import {
   setDoc,
   updateDoc,
   collection,
-  query,
-  where,
-  getDocs,
   arrayUnion,
   enableIndexedDbPersistence,
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
@@ -68,29 +65,36 @@ export async function getMyCoupleId(uid) {
   return snap.exists() ? snap.data().coupleId || null : null;
 }
 
-// 新しいカップル(2人組の共有スペース)を作り、招待コードを発行する
+// 新しいカップル(2人組の共有スペース)を作り、招待コードを発行する。
+// 招待コードは inviteCodes/{code} という別ドキュメントに保存する。
+// (couples/{coupleId} 自体は非公開データも含むため、まだメンバーでない人には検索させたくない。
+//  inviteCodes は coupleId への案内板だけを持つので、誰でも読めても問題ない)
 export async function createCouple(uid) {
   const code = randomCode();
   const coupleRef = doc(collection(db, "couples"));
   await setDoc(coupleRef, { code, members: [uid], createdAt: Date.now() });
+  await setDoc(doc(db, "inviteCodes", code), { coupleId: coupleRef.id });
   await setDoc(doc(db, "users", uid), { coupleId: coupleRef.id }, { merge: true });
   return { coupleId: coupleRef.id, code };
 }
 
-// 招待コードを使って既存のカップルに参加する
+// 招待コードを使って既存のカップルに参加する。
+// couples/{coupleId} はメンバー以外は読めない設計のため、参加前に中身を確認する
+// 事前チェックはできない。そのままFirestoreへ更新を試み、ルール側で
+// (メンバー本人 or まだ1人しかいない枠への参加)だけを許可する。
 export async function joinCouple(uid, code) {
   const trimmed = code.trim().toUpperCase();
-  const q = query(collection(db, "couples"), where("code", "==", trimmed));
-  const snaps = await getDocs(q);
-  if (snaps.empty) throw new Error("NOT_FOUND");
-  const coupleDoc = snaps.docs[0];
-  const data = coupleDoc.data();
-  if (!data.members.includes(uid)) {
-    if (data.members.length >= 2) throw new Error("FULL");
-    await updateDoc(coupleDoc.ref, { members: arrayUnion(uid) });
+  const inviteSnap = await getDoc(doc(db, "inviteCodes", trimmed));
+  if (!inviteSnap.exists()) throw new Error("NOT_FOUND");
+  const coupleId = inviteSnap.data().coupleId;
+  const coupleRef = doc(db, "couples", coupleId);
+  try {
+    await updateDoc(coupleRef, { members: arrayUnion(uid) });
+  } catch {
+    throw new Error("FULL");
   }
-  await setDoc(doc(db, "users", uid), { coupleId: coupleDoc.id }, { merge: true });
-  return coupleDoc.id;
+  await setDoc(doc(db, "users", uid), { coupleId }, { merge: true });
+  return coupleId;
 }
 
 export async function getCoupleInfo(coupleId) {

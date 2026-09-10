@@ -18,11 +18,22 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // 招待コード → coupleId の案内板。中身はcoupleIdだけなので誰でも読めてよい。
+    // (これが読めないと、招待コードを知っている人がカップルを探し当てられない)
+    match /inviteCodes/{code} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+    }
+
     match /couples/{coupleId} {
       // 新規作成: ログインしていれば誰でも新しいカップルを作れる
       allow create: if isSignedIn();
-      // 閲覧・更新: メンバー本人 or (2人目として)自分のuidを追加する参加操作のみ許可
-      allow read, update: if isMember(coupleId) || (
+      // 閲覧: メンバー本人のみ(プロフィール等の非公開データを含むため)
+      allow read: if isMember(coupleId);
+      // 更新: メンバー本人 or (2人目として)自分のuidを追加する参加操作のみ許可
+      // 参加時はまだ読み取り権限がないため、resource/request.resourceを使って
+      // 「1人しかいない枠に自分を1人だけ追加する」形だけを許可する
+      allow update: if isMember(coupleId) || (
         isSignedIn() &&
         resource.data.members.size() < 2 &&
         request.resource.data.members == resource.data.members.concat([request.auth.uid])

@@ -102,11 +102,13 @@ export function mount(root, { onReady, stage = "login", user = null }) {
           </div>
         `;
         const errorEl = body.querySelector("#pair-error");
+        let createdCoupleId = null;
         body.querySelector("#pair-create-btn").addEventListener("click", async (e) => {
           const btn = e.currentTarget;
           btn.disabled = true;
           try {
-            const { code } = await createCouple(user.uid);
+            const { coupleId, code } = await createCouple(user.uid);
+            createdCoupleId = coupleId;
             btn.hidden = true;
             body.querySelector("#pair-code-box").hidden = false;
             body.querySelector("#pair-code-text").textContent = code;
@@ -116,7 +118,7 @@ export function mount(root, { onReady, stage = "login", user = null }) {
             btn.disabled = false;
           }
         });
-        body.querySelector("#pair-continue-btn")?.addEventListener("click", () => onReady());
+        body.querySelector("#pair-continue-btn")?.addEventListener("click", () => onReady(createdCoupleId));
       } else {
         body.innerHTML = `
           <p style="font-size:13px;color:var(--color-text-muted);line-height:1.6;">
@@ -133,8 +135,8 @@ export function mount(root, { onReady, stage = "login", user = null }) {
           if (!code.trim()) return;
           btn.disabled = true;
           try {
-            await joinCouple(user.uid, code);
-            onReady();
+            const coupleId = await joinCouple(user.uid, code);
+            onReady(coupleId);
           } catch (err) {
             errorEl.textContent = friendlyError(err);
             errorEl.style.display = "block";

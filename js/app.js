@@ -38,11 +38,11 @@ function showAuthScreen(stage, user) {
   if (cleanup) cleanup();
   root.removeAttribute("data-view");
   root.scrollTop = 0;
-  cleanup = authView.mount(root, { stage, user, onReady: () => enterApp(user) }) || null;
+  cleanup = authView.mount(root, { stage, user, onReady: (coupleId) => enterApp(coupleId) }) || null;
 }
 
-function enterApp(user) {
-  store.init(user.__coupleId);
+function enterApp(coupleId) {
+  store.init(coupleId);
   tabBar.hidden = false;
   switchView("home");
 }
@@ -60,8 +60,7 @@ subscribeAuth(async (user) => {
       showAuthScreen("pair", user);
       return;
     }
-    user.__coupleId = coupleId;
-    enterApp(user);
+    enterApp(coupleId);
   } catch {
     showAuthScreen("pair", user);
   }

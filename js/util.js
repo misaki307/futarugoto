@@ -78,11 +78,14 @@ export function sticker(src, alt, className = "") {
   return `<span class="sticker ${className}"><img src="${src}" alt="${escapeHtml(alt)}" loading="lazy" /></span>`;
 }
 
-// プロフィールのアバターを表示する。写真が設定されていればそれを、
-// なければ絵文字を表示する。className はアバターを囲む要素(丸い枠)に付けるクラス。
+// プロフィールのアバターを表示する。優先順位は 写真 > アプリ内キャラクターアイコン > 絵文字。
+// className はアバターを囲む要素(丸い枠)に付けるクラス。
 export function avatarHtml(person, className = "") {
   if (person?.photo) {
     return `<img class="${className}" src="${person.photo}" alt="" style="object-fit:cover;" />`;
+  }
+  if (person?.iconAsset) {
+    return `<img class="${className}" src="${person.iconAsset}" alt="" style="object-fit:contain;" />`;
   }
   return `<span class="${className}">${escapeHtml(person?.avatar || "🙂")}</span>`;
 }

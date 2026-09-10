@@ -8,7 +8,6 @@ function formatEventDate(dateKey) {
 }
 
 export function mount(root, switchView) {
-  let openProfileIndex = null; // どちらのプロフィールを編集中か(0/1/null)
   let composerOpen = false;
   let pendingPhoto = null;
   let author = store.getMyAuthorIndex();
@@ -81,8 +80,6 @@ export function mount(root, switchView) {
         </div>
         ${sticker("assets/characters/star.png", "", "sticker--pop")}
       </div>
-
-      <div class="profile-quickedit card" id="profile-quickedit" ${openProfileIndex === null ? "hidden" : ""}></div>
 
       <section class="home-section">
         <button class="home-section__link" id="home-composer-toggle" style="width:100%;">
@@ -196,80 +193,13 @@ export function mount(root, switchView) {
       }
     });
 
-    // ---- プロフィールのクイック編集 ----
+    // ---- プロフィール画面への遷移 ----
     root.querySelectorAll("[data-edit-profile]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const idx = Number(btn.dataset.editProfile);
-        openProfileIndex = openProfileIndex === idx ? null : idx;
-        renderProfileEditor();
+        store.requestOpenProfile(Number(btn.dataset.editProfile));
+        switchView("profile");
       });
     });
-    const quickEditBox = root.querySelector("#profile-quickedit");
-    function renderProfileEditor() {
-      if (openProfileIndex === null) {
-        quickEditBox.hidden = true;
-        quickEditBox.innerHTML = "";
-        return;
-      }
-      quickEditBox.hidden = false;
-      const p = profile.people[openProfileIndex];
-      quickEditBox.innerHTML = `
-        <div style="display:flex; align-items:center; gap:12px;">
-          <span class="profile-quickedit__preview">${avatarHtml(p, "profile-quickedit__avatar")}</span>
-          <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
-            <input class="input" id="qe-name" maxlength="12" value="${escapeHtml(p.name)}" placeholder="なまえ" />
-            <div style="display:flex; gap:8px;">
-              <input class="input" id="qe-emoji" maxlength="2" value="${escapeHtml(p.avatar)}" style="width:64px; text-align:center;" placeholder="絵文字" />
-              <button class="btn btn-ghost btn-sm" id="qe-photo-btn" type="button">📷 写真を選ぶ</button>
-              <input type="file" accept="image/*" id="qe-photo-input" hidden />
-              ${p.photo ? `<button class="btn btn-ghost btn-sm" id="qe-photo-remove" type="button">写真を外す</button>` : ""}
-            </div>
-          </div>
-        </div>
-        <textarea class="textarea" id="qe-bio" maxlength="60" placeholder="ひとこと(自己紹介)" style="margin-top:10px;">${escapeHtml(p.bio || "")}</textarea>
-        <button class="btn btn-primary btn-block" id="qe-save" style="margin-top:10px;">保存する</button>
-      `;
-      let pendingProfilePhoto = p.photo || null;
-      quickEditBox.querySelector("#qe-photo-btn").addEventListener("click", () => {
-        quickEditBox.querySelector("#qe-photo-input").click();
-      });
-      quickEditBox.querySelector("#qe-photo-input").addEventListener("change", async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-          pendingProfilePhoto = await compressImageFile(file, { maxDim: 300, quality: 0.7 });
-          quickEditBox.querySelector(".profile-quickedit__preview").innerHTML = avatarHtml(
-            { ...p, photo: pendingProfilePhoto },
-            "profile-quickedit__avatar"
-          );
-        } catch {
-          showToast("写真の読み込みに失敗しました");
-        }
-      });
-      quickEditBox.querySelector("#qe-photo-remove")?.addEventListener("click", () => {
-        pendingProfilePhoto = null;
-        quickEditBox.querySelector(".profile-quickedit__preview").innerHTML = avatarHtml(
-          { ...p, photo: null },
-          "profile-quickedit__avatar"
-        );
-      });
-      quickEditBox.querySelector("#qe-save").addEventListener("click", async () => {
-        const name = quickEditBox.querySelector("#qe-name").value.trim() || p.name;
-        const avatar = quickEditBox.querySelector("#qe-emoji").value.trim() || p.avatar;
-        const bio = quickEditBox.querySelector("#qe-bio").value.trim();
-        const people = profile.people.map((person, i) =>
-          i === openProfileIndex ? { name, avatar, photo: pendingProfilePhoto, bio } : person
-        );
-        try {
-          await store.setProfile({ people });
-          showToast("プロフィールを保存しました");
-          openProfileIndex = null;
-        } catch {
-          showToast("保存に失敗しました");
-        }
-      });
-    }
-    renderProfileEditor();
 
     // ---- ホームからのクイック投稿 ----
     const composerToggle = root.querySelector("#home-composer-toggle");

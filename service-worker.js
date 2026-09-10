@@ -1,4 +1,4 @@
-const CACHE_NAME = "sharedapp-v4";
+const CACHE_NAME = "sharedapp-v5";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const CORE_ASSETS = [
   "./js/app.js",
   "./js/store.js",
   "./js/theme.js",
+  "./js/profileThemes.js",
   "./js/util.js",
   "./js/auth.js",
   "./js/firebase-config.js",
@@ -19,6 +20,7 @@ const CORE_ASSETS = [
   "./js/views/calendar.js",
   "./js/views/photos.js",
   "./js/views/settings.js",
+  "./js/views/profile.js",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png"

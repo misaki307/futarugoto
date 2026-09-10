@@ -31,8 +31,8 @@ export const DEFAULT_LISTS = [
 
 const DEFAULT_PROFILE = {
   people: [
-    { name: "わたし", avatar: "🐶", photo: null, bio: "" },
-    { name: "友だち", avatar: "🐱", photo: null, bio: "" },
+    { name: "わたし", avatar: "🐶", photo: null, bio: "", iconAsset: null, mbti: "", bloodType: "", birthday: null, likes: "", profileTheme: "pink" },
+    { name: "友だち", avatar: "🐱", photo: null, bio: "", iconAsset: null, mbti: "", bloodType: "", birthday: null, likes: "", profileTheme: "blue" },
   ],
   startDate: null,
 };
@@ -402,6 +402,17 @@ function consumePendingAlbumOpen() {
   pendingAlbumOpen = null;
   return id;
 }
+
+// ホーム/友だち一覧からプロフィール画面へ遷移する際、最初に表示する人(0/1)を一時的に受け渡す
+let pendingProfileOpen = null;
+function requestOpenProfile(index) {
+  pendingProfileOpen = index;
+}
+function consumePendingProfileOpen() {
+  const idx = pendingProfileOpen;
+  pendingProfileOpen = null;
+  return idx;
+}
 // アルバムに写真を直接追加する(投稿や予定に紐付かない単独の思い出)
 // albumIdを指定すると、追加と同時にそのアルバムに入れる
 async function addPhoto(photo, caption, date, albumId) {
@@ -470,6 +481,8 @@ export const store = {
   setPhotoAlbum,
   requestOpenAlbum,
   consumePendingAlbumOpen,
+  requestOpenProfile,
+  consumePendingProfileOpen,
   getAllPhotos,
   togglePhotoFavorite,
   addPhoto,

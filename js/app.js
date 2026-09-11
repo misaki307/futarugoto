@@ -8,9 +8,8 @@ import * as lists from "./views/lists.js";
 import * as calendar from "./views/calendar.js";
 import * as photos from "./views/photos.js";
 import * as settings from "./views/settings.js";
-import * as profile from "./views/profile.js";
 
-const views = { home, timeline, lists, calendar, photos, settings, profile };
+const views = { home, timeline, lists, calendar, photos, settings };
 const root = document.getElementById("view-root");
 const tabBar = document.querySelector(".tab-bar");
 const tabButtons = document.querySelectorAll(".tab-bar__item");

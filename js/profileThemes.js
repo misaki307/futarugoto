@@ -1,22 +1,21 @@
 // プロフィールページ専用の「背景テーマ」。
 // アプリ全体の配色(theme.js)とは完全に別物で、ひとりひとりが自分のプロフィールにだけ設定する。
-// テーマを選ぶと、背景色・メインキャラクター・装飾がまとめて描かれた画像(hero)が切り替わる。
-// hero画像は提供されたデザイン素材(OUR_DAYS_background_themes)から、ステータスバー/ヘッダー部分を
-// 除いて背景・キャラクター・あいさつ文だけを残す形で切り出したもの。
+// キャラクターは使わず、色・グラデーション・装飾だけのシンプルな背景(hero画像)を選べる。
+// プロフィールアイコン(ICON_ASSETS)とは完全に独立していて、背景テーマを変えてもアイコンは変わらない。
 
 export const PROFILE_THEMES = [
-  { id: "pink", label: "ピンク", sub: "うさぎ", hero: "assets/themes/pink-hero.png", character: "assets/characters/rabbit.png", bg: "#FFE3EC" },
-  { id: "yellow", label: "イエロー", sub: "いぬ", hero: "assets/themes/yellow-hero.png", character: "assets/characters/dog.png", bg: "#FFF3C4" },
-  { id: "blue", label: "ブルー", sub: "さかな", hero: "assets/themes/blue-hero.png", character: "assets/characters/fish.png", bg: "#DCEEFF" },
-  { id: "green", label: "グリーン", sub: "はっぱ", hero: "assets/themes/green-hero.png", character: "assets/characters/leaf.png", bg: "#E1F5E6" },
-  { id: "purple", label: "パープル", sub: "はな", hero: "assets/themes/purple-hero.png", character: "assets/characters/flower.png", bg: "#F1E6FB" },
-  { id: "red", label: "レッド", sub: "はーと", hero: "assets/themes/red-hero.png", character: "assets/characters/heart-buddy.png", bg: "#FFE1E1" },
-  { id: "beige", label: "ベージュ", sub: "食パン", hero: "assets/themes/beige-hero.png", character: "assets/characters/bread.png", bg: "#FBF1E3" },
-  { id: "lightblue", label: "ライトブルー", sub: "とり", hero: "assets/themes/lightblue-hero.png", character: "assets/characters/bird.png", bg: "#E4F6FB" },
-  { id: "orange", label: "オレンジ", sub: "ほし", hero: "assets/themes/orange-hero.png", character: "assets/characters/star.png", bg: "#FFEBD6" },
-  { id: "cherry", label: "チェリー", sub: "さくらんぼ", hero: "assets/themes/cherry-hero.png", character: "assets/characters/cherries.png", bg: "#FFE0EA" },
-  { id: "navy", label: "ネイビー", sub: "ねこ", hero: "assets/themes/navy-hero.png", character: "assets/characters/cat.png", bg: "#E4E8F5" },
-  { id: "rainbow", label: "レインボー", sub: "にじ", hero: "assets/themes/rainbow-hero.png", character: "assets/decorations/rainbow.png", bg: "#FFF6E9" },
+  { id: "pink", label: "ピンク", hero: "assets/themes/pink-hero.jpg", bg: "#FFE3EC" },
+  { id: "yellow", label: "イエロー", hero: "assets/themes/yellow-hero.jpg", bg: "#FFF3C4" },
+  { id: "blue", label: "ブルー", hero: "assets/themes/blue-hero.jpg", bg: "#DCEEFF" },
+  { id: "green", label: "グリーン", hero: "assets/themes/green-hero.jpg", bg: "#E1F5E6" },
+  { id: "purple", label: "パープル", hero: "assets/themes/purple-hero.jpg", bg: "#F1E6FB" },
+  { id: "red", label: "レッド", hero: "assets/themes/red-hero.jpg", bg: "#FFE1E1" },
+  { id: "beige", label: "ベージュ", hero: "assets/themes/beige-hero.jpg", bg: "#FBF1E3" },
+  { id: "lightblue", label: "ライトブルー", hero: "assets/themes/lightblue-hero.jpg", bg: "#E4F6FB" },
+  { id: "orange", label: "オレンジ", hero: "assets/themes/orange-hero.jpg", bg: "#FFEBD6" },
+  { id: "cherry", label: "チェリー", hero: "assets/themes/cherry-hero.jpg", bg: "#FFE0EA" },
+  { id: "navy", label: "ネイビー", hero: "assets/themes/navy-hero.jpg", bg: "#E4E8F5" },
+  { id: "rainbow", label: "レインボー", hero: "assets/themes/rainbow-hero.jpg", bg: "#FFF6E9" },
 ];
 
 export function getProfileTheme(id) {

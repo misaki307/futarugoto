@@ -1,12 +1,11 @@
-import { store } from "../store.js";
-import { escapeHtml, formatRelativeTime, illustration, sticker, avatarHtml, compressImageFile, showToast } from "../util.js";
-import { getProfileTheme } from "../profileThemes.js";
+// ホーム = プロフィール画面。
+// 1画面に1人分のプロフィールだけを表示し、左右スワイプ/矢印ボタンで自分・友達を切り替える。
+// 背景テーマ(profileThemes.js)とプロフィールアイコン(写真 or キャラクター)は完全に独立していて、
+// どちらか一方を変えてももう一方には影響しない。
 
-function formatEventDate(dateKey) {
-  const [, m, d] = dateKey.split("-").map(Number);
-  const dow = "日月火水木金土"[new Date(dateKey).getDay()];
-  return `${m}/${d}(${dow})`;
-}
+import { store } from "../store.js";
+import { escapeHtml, avatarHtml, compressImageFile, showToast } from "../util.js";
+import { PROFILE_THEMES, getProfileTheme, ICON_ASSETS, MBTI_OPTIONS, BLOOD_TYPE_OPTIONS } from "../profileThemes.js";
 
 function formatBirthday(dateStr) {
   if (!dateStr) return "未設定";
@@ -15,284 +14,323 @@ function formatBirthday(dateStr) {
 }
 
 export function mount(root, switchView) {
-  let composerOpen = false;
-  let pendingPhoto = null;
-  let author = store.getMyAuthorIndex();
+  const myIndex = store.getMyAuthorIndex();
+  const pending = store.consumePendingProfileOpen();
+  let viewIndex = pending === null || pending === undefined ? myIndex : Number(pending);
+  let editing = false;
+  let selectedThemeId = null;
+  let touchX = null;
+  let touchY = null;
+
+  function goTo(index) {
+    const people = store.getProfile().people;
+    if (index < 0 || index >= people.length) return;
+    viewIndex = index;
+    editing = false;
+    render();
+  }
 
   function render() {
     const profile = store.getProfile();
-    const days = store.getDaysTogether();
-    const latestPost = store.getPosts()[0];
+    const people = profile.people;
+    const person = people[viewIndex] || people[0];
+    const isSelf = viewIndex === myIndex;
+    const theme = getProfileTheme(person.profileTheme);
+    const posts = store.getPosts().filter((p) => (p.author ?? 0) === viewIndex);
+    const todayPost = posts[0];
     const nextEvent = store.getNextEvent();
-    const wannaGo = store.getLists().find((l) => l.id === "wanna-go");
-    const recentPhotos = store.getAllPhotos().slice(0, 6);
-    const unseenCount = store.getUnseenPostCount();
-    const myIndex = store.getMyAuthorIndex();
-    const me = profile.people[myIndex] || profile.people[0];
-    const albums = store.getAlbums();
-    const allPhotos = store.getAllPhotos();
-    const myTheme = getProfileTheme(me.profileTheme);
+    const recentPhotos = posts.filter((p) => p.photo).slice(0, 6);
 
-    root.innerHTML = `
-      <section class="profile-room card">
-        <button class="profile-room__hero-btn" id="profile-room-open-btn" type="button">
-          <div class="profile-hero profile-hero--compact" style="--profile-bg:${myTheme.bg};">
-            <img class="profile-hero__img" src="${myTheme.hero}" alt="" />
-            <div class="profile-hero__icon-wrap">
-              <span class="profile-hero__icon">${avatarHtml(me, "profile-hero__icon-img")}</span>
-              <span class="profile-hero__icon-edit" aria-hidden="true">📷</span>
-            </div>
+    if (editing && isSelf) selectedThemeId = selectedThemeId || person.profileTheme || "pink";
+
+    const cardHtml =
+      editing && isSelf
+        ? `
+      <form class="profile-edit-form" id="profile-edit-form">
+        <label class="profile-edit-form__label">名前</label>
+        <input class="input" id="ed-name" maxlength="12" value="${escapeHtml(person.name)}" />
+
+        <label class="profile-edit-form__label">自己紹介</label>
+        <textarea class="textarea" id="ed-bio" maxlength="60" placeholder="ひとこと">${escapeHtml(person.bio || "")}</textarea>
+
+        <div class="profile-edit-form__row">
+          <div style="flex:1;">
+            <label class="profile-edit-form__label">MBTI</label>
+            <select class="input" id="ed-mbti">
+              <option value="">未設定</option>
+              ${MBTI_OPTIONS.map((m) => `<option value="${m}" ${person.mbti === m ? "selected" : ""}>${m}</option>`).join("")}
+            </select>
           </div>
-        </button>
-        <div class="profile-room__summary">
-          <div class="profile-card__name">${escapeHtml(me.name)}</div>
-          <div class="profile-card__bio">${me.bio ? escapeHtml(me.bio) : "タップしてプロフィールを編集"}</div>
-          <div class="profile-info-grid">
-            <div class="profile-info-row"><span class="profile-info-row__icon">💫</span><span class="profile-info-row__label">MBTI</span><span class="profile-info-row__value">${me.mbti ? escapeHtml(me.mbti) : "未設定"}</span></div>
-            <div class="profile-info-row"><span class="profile-info-row__icon">🩸</span><span class="profile-info-row__label">血液型</span><span class="profile-info-row__value">${me.bloodType ? escapeHtml(me.bloodType) : "未設定"}</span></div>
-            <div class="profile-info-row"><span class="profile-info-row__icon">🎂</span><span class="profile-info-row__label">誕生日</span><span class="profile-info-row__value">${formatBirthday(me.birthday)}</span></div>
-            <div class="profile-info-row"><span class="profile-info-row__icon">⭐</span><span class="profile-info-row__label">好きなもの</span><span class="profile-info-row__value">${me.likes ? escapeHtml(me.likes) : "未設定"}</span></div>
+          <div style="flex:1;">
+            <label class="profile-edit-form__label">血液型</label>
+            <select class="input" id="ed-blood">
+              <option value="">未設定</option>
+              ${BLOOD_TYPE_OPTIONS.map((b) => `<option value="${b}" ${person.bloodType === b ? "selected" : ""}>${b}</option>`).join("")}
+            </select>
           </div>
         </div>
-        <div class="profile-room__highlights">
-          ${albums
-            .map((a) => {
-              const cover = allPhotos.find((p) => p.albumId === a.id);
-              return `<button class="highlight-bubble" data-open-album="${a.id}">
-                <span class="highlight-bubble__img">${cover ? `<img src="${cover.photo}" alt="" />` : "📁"}</span>
-                <span class="highlight-bubble__label">${escapeHtml(a.name)}</span>
-              </button>`;
-            })
-            .join("")}
-          <button class="highlight-bubble highlight-bubble--add" id="room-add-album-btn" type="button">
-            <span class="highlight-bubble__img">＋</span>
-            <span class="highlight-bubble__label">新規</span>
-          </button>
-        </div>
-        ${
-          allPhotos.length > 0
-            ? `<div class="photo-grid">${allPhotos
-                .slice(0, 9)
-                .map((p) => `<button class="photo-tile" data-nav="photos"><img src="${p.photo}" alt="" /></button>`)
-                .join("")}</div>
-              ${allPhotos.length > 9 ? `<button class="profile-room__more" data-nav="photos">すべての写真を見る(${allPhotos.length}枚)</button>` : ""}`
-            : `<div class="empty-illust">${illustration("assets/characters/rabbit.png", "🐰", { className: "illust--md" })}まだ写真がないよ</div>`
-        }
-      </section>
 
-      <section class="screen-hero home-hero">
-        ${sticker("assets/characters/dog.png", "", "sticker--pop")}
-        ${sticker("assets/characters/rabbit.png", "", "sticker--pop")}
-        ${sticker("assets/decorations/heart.png", "", "sticker--pop")}
-        <h1 class="screen-hero__title">OUR DAYS</h1>
-        <p class="screen-hero__subtitle">ふたりの毎日を、もっとたのしく。</p>
-      </section>
+        <label class="profile-edit-form__label">誕生日</label>
+        <input class="input" type="date" id="ed-birthday" value="${person.birthday || ""}" />
 
-      <div class="couple-card">
-        <div class="couple-avatars">
-          <button class="couple-avatar" data-edit-profile="0">${avatarHtml(profile.people[0], "couple-avatar__img")}</button>
-          <span class="couple-avatars__heart">💛</span>
-          <button class="couple-avatar" data-edit-profile="1">${avatarHtml(profile.people[1], "couple-avatar__img")}</button>
+        <label class="profile-edit-form__label">好きなもの</label>
+        <input class="input" id="ed-likes" maxlength="40" placeholder="例: 甘いもの、映画" value="${escapeHtml(person.likes || "")}" />
+
+        <label class="profile-edit-form__label">背景テーマ</label>
+        <div class="theme-swatch-grid" id="ed-theme-grid">
+          ${PROFILE_THEMES.map(
+            (t) => `
+            <button type="button" class="theme-swatch-option ${t.id === selectedThemeId ? "is-active" : ""}" data-theme-id="${t.id}" style="--swatch-bg:${t.bg};">
+              <span class="theme-swatch-option__thumb"><img src="${t.hero}" alt="" /></span>
+              <span class="theme-swatch-option__label">${escapeHtml(t.label)}</span>
+            </button>`
+          ).join("")}
         </div>
-        <div class="couple-days">
-          <div class="couple-days__label">${days !== null ? "出会ってから" : "設定で出会った日を登録しよう"}</div>
-          ${days !== null ? `<div class="couple-days__value">${days}<span>日</span></div>` : ""}
+
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button type="button" class="btn btn-ghost" id="ed-cancel-btn" style="flex:1;">キャンセル</button>
+          <button type="submit" class="btn btn-primary" id="ed-save-btn" style="flex:1;">保存する</button>
         </div>
-        ${sticker("assets/characters/star.png", "", "sticker--pop")}
+      </form>`
+        : `
+      <div class="profile-card__head">
+        <div style="flex:1; min-width:0;">
+          <div class="profile-card__name">${escapeHtml(person.name)}</div>
+          <div class="profile-card__bio">${person.bio ? escapeHtml(person.bio) : "ひとこと未設定"}</div>
+        </div>
+        ${isSelf ? `<button class="btn btn-ghost btn-sm" id="profile-edit-btn" type="button">編集</button>` : ""}
       </div>
 
-      <section class="home-section">
-        <button class="home-section__link" id="home-composer-toggle" style="width:100%;">
-          <span class="home-section__title">
-            ${illustration("assets/icons/speech-bubble.png", "💬", { className: "illust--sm" })}
-            今日のひとこと、つぶやく
-          </span>
-          <span class="home-section__chevron">${composerOpen ? "︿" : "›"}</span>
-        </button>
-        <div class="composer card" id="home-composer" ${composerOpen ? "" : "hidden"}>
-          <div class="composer__author" id="home-composer-author">
-            ${profile.people
+      <div class="profile-info-grid">
+        <div class="profile-info-row"><span class="profile-info-row__icon">💫</span><span class="profile-info-row__label">MBTI</span><span class="profile-info-row__value">${person.mbti ? escapeHtml(person.mbti) : "未設定"}</span></div>
+        <div class="profile-info-row"><span class="profile-info-row__icon">🩸</span><span class="profile-info-row__label">血液型</span><span class="profile-info-row__value">${person.bloodType ? escapeHtml(person.bloodType) : "未設定"}</span></div>
+        <div class="profile-info-row"><span class="profile-info-row__icon">🎂</span><span class="profile-info-row__label">誕生日</span><span class="profile-info-row__value">${formatBirthday(person.birthday)}</span></div>
+        <div class="profile-info-row"><span class="profile-info-row__icon">⭐</span><span class="profile-info-row__label">好きなもの</span><span class="profile-info-row__value">${person.likes ? escapeHtml(person.likes) : "未設定"}</span></div>
+      </div>
+
+      <div class="profile-today-next">
+        <div class="profile-today-next__item">
+          <div class="profile-today-next__label">Today</div>
+          <div class="profile-today-next__body">${todayPost ? escapeHtml(todayPost.text || "(写真の投稿)") : "まだ投稿がありません"}</div>
+        </div>
+        <div class="profile-today-next__item">
+          <div class="profile-today-next__label">Next</div>
+          <div class="profile-today-next__body">${nextEvent ? escapeHtml(nextEvent.title) : "まだ予定がありません"}</div>
+        </div>
+      </div>
+
+      <div class="profile-recent-photos">
+        <div class="profile-recent-photos__label">最近の写真</div>
+        ${
+          recentPhotos.length > 0
+            ? `<div class="photo-grid">${recentPhotos.map((p) => `<button class="photo-tile" data-nav="photos"><img src="${p.photo}" alt="" /></button>`).join("")}</div>`
+            : `<div class="empty-state">まだ写真がありません</div>`
+        }
+      </div>`;
+
+    root.innerHTML = `
+      <div class="profile-page">
+        <div class="profile-page__topbar">
+          <span class="profile-page__topbar-title">プロフィール</span>
+          <button class="profile-page__icon-btn" id="profile-friends-btn" type="button" aria-label="友達一覧">👥</button>
+        </div>
+
+        <div class="profile-hero" style="--profile-bg:${theme.bg};">
+          <img class="profile-hero__img" src="${theme.hero}" alt="${escapeHtml(theme.label)}テーマ" />
+          <div class="profile-hero__icon-wrap">
+            <span class="profile-hero__icon">${avatarHtml(person, "profile-hero__icon-img")}</span>
+            ${isSelf ? `<button class="profile-hero__icon-edit" id="profile-icon-edit-btn" type="button" aria-label="アイコンを変更">📷</button>` : ""}
+          </div>
+        </div>
+
+        <div class="profile-card card">${cardHtml}</div>
+
+        <div class="profile-page__nav">
+          <button class="profile-page__nav-btn" id="profile-prev-btn" type="button" ${viewIndex === 0 ? "disabled" : ""}>‹ ${escapeHtml(people[0]?.name || "")}</button>
+          <button class="profile-page__nav-btn" id="profile-next-btn" type="button" ${viewIndex === people.length - 1 ? "disabled" : ""}>${escapeHtml(people[1]?.name || "")} ›</button>
+        </div>
+      </div>
+
+      <div class="lightbox" id="friend-list-overlay">
+        <div class="lightbox__inner" style="width:100%; max-height:80vh; overflow-y:auto;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="color:#fff; font-weight:800;">友達一覧</span>
+            <button class="lightbox__close" id="friend-list-close" type="button">閉じる</button>
+          </div>
+          <div class="friend-list">
+            ${people
               .map(
-                (p, i) => `<button class="author-pick ${i === author ? "is-active" : ""}" data-author="${i}" type="button">
-                  ${avatarHtml(p, "")} ${escapeHtml(p.name)}
-                </button>`
+                (p, i) => `
+              <button class="friend-row" data-friend-index="${i}" type="button">
+                ${avatarHtml(p, "friend-row__avatar")}
+                <span class="friend-row__body">
+                  <span class="friend-row__name">${escapeHtml(p.name)}${i === myIndex ? "(あなた)" : ""}</span>
+                  <span class="friend-row__bio">${p.bio ? escapeHtml(p.bio) : ""}</span>
+                </span>
+              </button>`
               )
               .join("")}
           </div>
-          <textarea class="textarea" id="home-composer-input" maxlength="500" placeholder="今日あったこと、話したいことをつぶやこう"></textarea>
-          <div class="composer__preview" id="home-composer-preview">
-            <img id="home-composer-preview-img" alt="" />
-            <button class="composer__preview-remove" id="home-composer-preview-remove" aria-label="写真を外す">✕</button>
-          </div>
-          <div class="composer__row">
-            <button class="composer__photo-btn" id="home-composer-photo-btn" aria-label="写真を追加">📷</button>
-            <input type="file" accept="image/*" id="home-composer-photo-input" hidden />
-            <button class="btn btn-primary" id="home-composer-submit">投稿する</button>
-          </div>
         </div>
-      </section>
-
-      <section class="home-section">
-        <button class="home-section__link" data-nav="timeline">
-          <span class="home-section__title">
-            ${illustration("assets/icons/speech-bubble.png", "💬", { className: "illust--sm" })}
-            最近の投稿
-            ${unseenCount > 0 ? `<span class="badge-count">${unseenCount}</span>` : ""}
-          </span>
-          <span class="home-section__chevron">›</span>
-        </button>
-        ${
-          latestPost
-            ? `<button class="home-post-preview" data-nav="timeline">
-                ${avatarHtml(profile.people[latestPost.author ?? 0] || { avatar: "🙂" }, "home-post-preview__avatar")}
-                <span class="home-post-preview__body">
-                  <div class="home-post-preview__text">${escapeHtml(latestPost.text || "(写真のみの投稿)")}</div>
-                  <div class="home-post-preview__time">${formatRelativeTime(latestPost.createdAt)}</div>
-                </span>
-                ${latestPost.photo ? `<img class="home-post-preview__thumb" src="${latestPost.photo}" alt="" />` : ""}
-                ${sticker("assets/decorations/heart.png", "", "sticker--pop")}
-              </button>`
-            : `<div class="empty-illust">${illustration("assets/characters/bird.png", "🐦", { className: "illust--md" })}まだ投稿がないよ</div>`
-        }
-      </section>
-
-      <div class="home-stats">
-        <button class="home-stat home-stat--primary" data-nav="calendar">
-          ${sticker("assets/icons/calendar.png", "", "sticker--pop")}
-          <div class="home-stat__label">次の予定</div>
-          ${
-            nextEvent
-              ? `<div class="home-stat__value">${formatEventDate(nextEvent.date)}</div>
-                 <div class="home-stat__sub">${escapeHtml(nextEvent.title)}</div>`
-              : `<div class="home-stat__sub">まだ予定がありません</div>`
-          }
-        </button>
-        <button class="home-stat home-stat--accent" data-nav="lists">
-          ${sticker("assets/icons/pin.png", "", "sticker--pop")}
-          <div class="home-stat__label">行きたいところ</div>
-          <div class="home-stat__value">${wannaGo ? wannaGo.openCount : 0}件</div>
-        </button>
       </div>
 
-      <section class="home-section">
-        <button class="home-section__link" data-nav="photos">
-          <span class="home-section__title">
-            ${illustration("assets/icons/camera.png", "📷", { className: "illust--sm" })}
-            最近の写真
-          </span>
-          <span class="home-section__chevron">›</span>
-        </button>
-        ${
-          recentPhotos.length > 0
-            ? `<div class="home-photos-row">${recentPhotos.map((p) => `<img src="${p.photo}" alt="" />`).join("")}</div>`
-            : `<div class="empty-illust">${illustration("assets/characters/rabbit.png", "🐰", { className: "illust--md" })}まだ写真がありません</div>`
-        }
-      </section>
+      ${
+        isSelf
+          ? `
+      <div class="lightbox" id="icon-picker-overlay">
+        <div class="lightbox__inner" style="width:100%; max-height:80vh; overflow-y:auto;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <span style="color:#fff; font-weight:800;">アイコンを選ぶ</span>
+            <button class="lightbox__close" id="icon-picker-close" type="button">閉じる</button>
+          </div>
+          <input type="file" accept="image/*" id="icon-photo-input" hidden />
+          <button class="btn btn-primary btn-block" id="icon-photo-btn" type="button" style="margin-bottom:12px;">📷 カスタム画像を使う</button>
+          <div class="icon-picker-grid">
+            ${ICON_ASSETS.map(
+              (ic) => `
+              <button class="icon-picker-item" data-icon-asset="${ic.path}" type="button">
+                <img src="${ic.path}" alt="" />
+                <span>${escapeHtml(ic.label)}</span>
+              </button>`
+            ).join("")}
+          </div>
+        </div>
+      </div>`
+          : ""
+      }
     `;
 
     root.querySelectorAll("[data-nav]").forEach((el) => {
       el.addEventListener("click", () => switchView(el.dataset.nav));
     });
 
-    // ---- ハイライト(アルバム)からの遷移 ----
-    root.querySelectorAll("[data-open-album]").forEach((btn) => {
+    wireEvents(person, isSelf);
+  }
+
+  function wireEvents(person, isSelf) {
+    root.querySelector("#profile-prev-btn").addEventListener("click", () => goTo(viewIndex - 1));
+    root.querySelector("#profile-next-btn").addEventListener("click", () => goTo(viewIndex + 1));
+
+    const friendOverlay = root.querySelector("#friend-list-overlay");
+    root.querySelector("#profile-friends-btn").addEventListener("click", () => friendOverlay.classList.add("is-visible"));
+    root.querySelector("#friend-list-close").addEventListener("click", () => friendOverlay.classList.remove("is-visible"));
+    friendOverlay.addEventListener("click", (e) => {
+      if (e.target === friendOverlay) friendOverlay.classList.remove("is-visible");
+    });
+    friendOverlay.querySelectorAll("[data-friend-index]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        store.requestOpenAlbum(btn.dataset.openAlbum);
-        switchView("photos");
+        friendOverlay.classList.remove("is-visible");
+        goTo(Number(btn.dataset.friendIndex));
       });
     });
-    root.querySelector("#room-add-album-btn")?.addEventListener("click", async () => {
-      const name = window.prompt("アルバムの名前を入力してください(例: ディズニーの思い出)");
-      if (!name || !name.trim()) return;
-      try {
-        const id = await store.createAlbum(name);
-        store.requestOpenAlbum(id);
-        switchView("photos");
-      } catch {
-        showToast("作成に失敗しました");
-      }
-    });
 
-    // ---- プロフィール画面への遷移 ----
-    root.querySelectorAll("[data-edit-profile]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        store.requestOpenProfile(Number(btn.dataset.editProfile));
-        switchView("profile");
+    if (isSelf) {
+      const iconOverlay = root.querySelector("#icon-picker-overlay");
+      root.querySelector("#profile-icon-edit-btn").addEventListener("click", () => iconOverlay.classList.add("is-visible"));
+      root.querySelector("#icon-picker-close").addEventListener("click", () => iconOverlay.classList.remove("is-visible"));
+      iconOverlay.addEventListener("click", (e) => {
+        if (e.target === iconOverlay) iconOverlay.classList.remove("is-visible");
       });
-    });
-    root.querySelector("#profile-room-open-btn").addEventListener("click", () => {
-      store.requestOpenProfile(myIndex);
-      switchView("profile");
-    });
-
-    // ---- ホームからのクイック投稿 ----
-    const composerToggle = root.querySelector("#home-composer-toggle");
-    const composerBox = root.querySelector("#home-composer");
-    composerToggle.addEventListener("click", () => {
-      composerOpen = !composerOpen;
-      composerBox.hidden = !composerOpen;
-      composerToggle.querySelector(".home-section__chevron").textContent = composerOpen ? "︿" : "›";
-      if (composerOpen) root.querySelector("#home-composer-input")?.focus();
-    });
-    const authorBox = root.querySelector("#home-composer-author");
-    authorBox?.addEventListener("click", (e) => {
-      const btn = e.target.closest(".author-pick");
-      if (!btn) return;
-      author = Number(btn.dataset.author);
-      authorBox.querySelectorAll(".author-pick").forEach((b) => b.classList.toggle("is-active", b === btn));
-    });
-    const input = root.querySelector("#home-composer-input");
-    const submitBtn = root.querySelector("#home-composer-submit");
-    const photoBtn = root.querySelector("#home-composer-photo-btn");
-    const photoInput = root.querySelector("#home-composer-photo-input");
-    const preview = root.querySelector("#home-composer-preview");
-    const previewImg = root.querySelector("#home-composer-preview-img");
-    function clearPhoto() {
-      pendingPhoto = null;
-      photoInput.value = "";
-      preview.classList.remove("is-visible");
-      previewImg.src = "";
+      iconOverlay.querySelectorAll("[data-icon-asset]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const people = store.getProfile().people.map((p, i) =>
+            i === viewIndex ? { ...p, iconAsset: btn.dataset.iconAsset, photo: null } : p
+          );
+          try {
+            await store.setProfile({ people });
+            showToast("アイコンを変更しました");
+            iconOverlay.classList.remove("is-visible");
+            render();
+          } catch {
+            showToast("変更に失敗しました");
+          }
+        });
+      });
+      const iconPhotoBtn = root.querySelector("#icon-photo-btn");
+      const iconPhotoInput = root.querySelector("#icon-photo-input");
+      iconPhotoBtn.addEventListener("click", () => iconPhotoInput.click());
+      iconPhotoInput.addEventListener("change", async () => {
+        const file = iconPhotoInput.files?.[0];
+        if (!file) return;
+        try {
+          const photo = await compressImageFile(file, { maxDim: 300, quality: 0.7 });
+          const people = store.getProfile().people.map((p, i) =>
+            i === viewIndex ? { ...p, photo, iconAsset: null } : p
+          );
+          await store.setProfile({ people });
+          showToast("アイコンを変更しました");
+          iconOverlay.classList.remove("is-visible");
+          render();
+        } catch {
+          showToast("写真の読み込みに失敗しました");
+        }
+      });
     }
-    photoBtn?.addEventListener("click", () => photoInput.click());
-    photoInput?.addEventListener("change", async () => {
-      const file = photoInput.files?.[0];
-      if (!file) return;
-      try {
-        pendingPhoto = await compressImageFile(file);
-        previewImg.src = pendingPhoto;
-        preview.classList.add("is-visible");
-      } catch {
-        showToast("写真の読み込みに失敗しました");
-      }
+
+    if (editing && isSelf) {
+      const themeGrid = root.querySelector("#ed-theme-grid");
+      themeGrid.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-theme-id]");
+        if (!btn) return;
+        selectedThemeId = btn.dataset.themeId;
+        themeGrid.querySelectorAll(".theme-swatch-option").forEach((b) => b.classList.toggle("is-active", b === btn));
+      });
+      root.querySelector("#ed-cancel-btn").addEventListener("click", () => {
+        editing = false;
+        selectedThemeId = null;
+        render();
+      });
+      root.querySelector("#profile-edit-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const saveBtn = root.querySelector("#ed-save-btn");
+        const name = root.querySelector("#ed-name").value.trim() || person.name;
+        const bio = root.querySelector("#ed-bio").value.trim();
+        const mbti = root.querySelector("#ed-mbti").value;
+        const bloodType = root.querySelector("#ed-blood").value;
+        const birthday = root.querySelector("#ed-birthday").value || null;
+        const likes = root.querySelector("#ed-likes").value.trim();
+        const profileTheme = selectedThemeId || person.profileTheme;
+        const people = store.getProfile().people.map((p, i) =>
+          i === viewIndex ? { ...p, name, bio, mbti, bloodType, birthday, likes, profileTheme } : p
+        );
+        saveBtn.disabled = true;
+        try {
+          await store.setProfile({ people });
+          showToast("プロフィールを保存しました");
+          editing = false;
+          selectedThemeId = null;
+          render();
+        } catch {
+          showToast("保存に失敗しました");
+          saveBtn.disabled = false;
+        }
+      });
+    } else if (isSelf) {
+      root.querySelector("#profile-edit-btn").addEventListener("click", () => {
+        editing = true;
+        selectedThemeId = person.profileTheme;
+        render();
+      });
+    }
+
+    const page = root.querySelector(".profile-page");
+    page.addEventListener("touchstart", (e) => {
+      if (editing) return;
+      touchX = e.touches[0].clientX;
+      touchY = e.touches[0].clientY;
     });
-    root.querySelector("#home-composer-preview-remove")?.addEventListener("click", clearPhoto);
-    submitBtn?.addEventListener("click", async () => {
-      if (!input.value.trim() && !pendingPhoto) return;
-      submitBtn.disabled = true;
-      try {
-        await store.addPost(input.value, pendingPhoto, author);
-      } catch {
-        showToast("投稿に失敗しました。写真が大きすぎるかもしれません");
-        submitBtn.disabled = false;
-        return;
+    page.addEventListener("touchend", (e) => {
+      if (editing || touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      const dy = e.changedTouches[0].clientY - touchY;
+      touchX = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) {
+        goTo(dx < 0 ? viewIndex + 1 : viewIndex - 1);
       }
-      submitBtn.disabled = false;
-      input.value = "";
-      clearPhoto();
-      composerOpen = false;
-      render();
     });
   }
 
   render();
-  const unsubs = [
-    store.subscribeProfile(render),
-    store.subscribePosts(render),
-    store.subscribeLists(render),
-    store.subscribeEvents(render),
-    store.subscribePhotos(render),
-    store.subscribeLastSeen(render),
-    store.subscribeAlbums(render),
-  ];
+  const unsubs = [store.subscribeProfile(render), store.subscribePosts(render), store.subscribeEvents(render)];
   return () => unsubs.forEach((fn) => fn());
 }

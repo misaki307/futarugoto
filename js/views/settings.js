@@ -39,6 +39,11 @@ export function mount(root) {
           <label for="start-date">出会った日</label>
           <input class="input" type="date" id="start-date" value="${profile.startDate || ""}" />
         </div>
+        ${
+          store.getDaysTogether() !== null
+            ? `<div style="font-size:12px;color:var(--color-text-muted);margin-top:-6px;">出会ってから ${store.getDaysTogether()}日</div>`
+            : ""
+        }
         <button class="btn btn-primary btn-block" type="submit">保存する</button>
       </form>
     </div>
@@ -107,11 +112,16 @@ export function mount(root) {
   root.querySelector("#profile-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const submitBtn = e.target.querySelector("button[type=submit]");
-    const people = profile.people.map((p, i) => ({
-      avatar: root.querySelector(`#avatar-${i}`).value.trim() || p.avatar,
-      name: root.querySelector(`#name-${i}`).value.trim() || p.name,
-      photo: pendingPhotos[i],
-    }));
+    const people = profile.people.map((p, i) => {
+      const photo = pendingPhotos[i];
+      return {
+        ...p,
+        avatar: root.querySelector(`#avatar-${i}`).value.trim() || p.avatar,
+        name: root.querySelector(`#name-${i}`).value.trim() || p.name,
+        photo,
+        iconAsset: photo !== (p.photo || null) ? null : p.iconAsset,
+      };
+    });
     const startDate = root.querySelector("#start-date").value || null;
     submitBtn.disabled = true;
     try {

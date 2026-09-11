@@ -1075,44 +1075,39 @@
   color: var(--color-text);
 }
 
-.profile-hero {
-  position: relative;
-  border-radius: var(--radius-lg);
-  margin-bottom: 40px;
-  background: var(--profile-bg, var(--color-surface-alt));
+.profile-avatar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  overflow: hidden;
+  margin-bottom: var(--space-5);
 }
-.profile-hero__img {
-  display: block;
-  width: 100%;
-  height: auto;
+.profile-avatar-ring {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  padding: 4px;
+  margin-bottom: var(--space-3);
 }
-.profile-hero__icon-wrap {
-  position: absolute;
-  z-index: 2;
-  left: 50%;
-  bottom: -32px;
-  transform: translateX(-50%);
-}
-.profile-hero__icon {
+.profile-avatar-ring__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   background: var(--color-surface-alt);
   font-size: 40px;
   overflow: hidden;
-  box-shadow: 0 0 0 4px var(--color-surface), var(--shadow-pop);
+  box-shadow: 0 0 0 3px var(--color-surface);
 }
-.profile-hero__icon-img {
+.profile-avatar-ring__icon-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.profile-hero__icon-edit {
+.profile-avatar-edit-btn {
   font-family: inherit;
   position: absolute;
   right: -2px;
@@ -1121,21 +1116,19 @@
   height: 30px;
   border-radius: 50%;
   border: none;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  color: #fff;
   font-size: 13px;
   cursor: pointer;
   box-shadow: var(--shadow-card);
 }
+.profile-edit-trigger {
+  font-family: inherit;
+  border: none;
+  color: #fff;
+  margin-top: var(--space-2);
+}
 
 .profile-card {
-  margin-top: 44px;
-  margin-bottom: var(--space-4);
-}
-.profile-card__head {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
 .profile-card__name {
@@ -1165,6 +1158,13 @@
 }
 .profile-info-row__icon {
   flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 12px;
 }
 .profile-info-row__label {
   color: var(--color-text-muted);
@@ -1323,42 +1323,26 @@
   gap: var(--space-2);
 }
 
-.theme-swatch-grid {
+.accent-swatch-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: var(--space-2);
 }
-.theme-swatch-option {
-  font-family: inherit;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  border: 2px solid transparent;
-  background: var(--swatch-bg, var(--color-surface-alt));
-  border-radius: var(--radius-md);
-  padding: var(--space-2);
-  cursor: pointer;
-}
-.theme-swatch-option.is-active {
-  border-color: var(--color-primary);
-}
-.theme-swatch-option__thumb {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  overflow: hidden;
-}
-.theme-swatch-option__thumb img {
+.accent-swatch-option {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background: var(--swatch-color);
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
 }
-.theme-swatch-option__label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-text);
+.accent-swatch-option.is-active {
+  border-color: var(--color-text);
+}
+.profile-edit-form__hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
 }

@@ -1,25 +1,25 @@
-// プロフィールページ専用の「背景テーマ」。
-// アプリ全体の配色(theme.js)とは完全に別物で、ひとりひとりが自分のプロフィールにだけ設定する。
-// キャラクターは使わず、色・グラデーション・装飾だけのシンプルな背景(hero画像)を選べる。
-// プロフィールアイコン(ICON_ASSETS)とは完全に独立していて、背景テーマを変えてもアイコンは変わらない。
+// プロフィールページ専用の「アクセントカラー」。
+// 画面全体の背景は常に共通のクリーム色(--screen-home-bg)のままで、
+// ここで選んだ色は編集ボタンやアイコンのふち、Today/Nextの見出しなど一部の装飾にだけ使う。
+// プロフィールアイコン(ICON_ASSETS)とは完全に独立していて、アクセントカラーを変えてもアイコンは変わらない。
 
-export const PROFILE_THEMES = [
-  { id: "pink", label: "ピンク", hero: "assets/themes/pink-hero.jpg", bg: "#FFE3EC" },
-  { id: "yellow", label: "イエロー", hero: "assets/themes/yellow-hero.jpg", bg: "#FFF3C4" },
-  { id: "blue", label: "ブルー", hero: "assets/themes/blue-hero.jpg", bg: "#DCEEFF" },
-  { id: "green", label: "グリーン", hero: "assets/themes/green-hero.jpg", bg: "#E1F5E6" },
-  { id: "purple", label: "パープル", hero: "assets/themes/purple-hero.jpg", bg: "#F1E6FB" },
-  { id: "red", label: "レッド", hero: "assets/themes/red-hero.jpg", bg: "#FFE1E1" },
-  { id: "beige", label: "ベージュ", hero: "assets/themes/beige-hero.jpg", bg: "#FBF1E3" },
-  { id: "lightblue", label: "ライトブルー", hero: "assets/themes/lightblue-hero.jpg", bg: "#E4F6FB" },
-  { id: "orange", label: "オレンジ", hero: "assets/themes/orange-hero.jpg", bg: "#FFEBD6" },
-  { id: "cherry", label: "チェリー", hero: "assets/themes/cherry-hero.jpg", bg: "#FFE0EA" },
-  { id: "navy", label: "ネイビー", hero: "assets/themes/navy-hero.jpg", bg: "#E4E8F5" },
-  { id: "rainbow", label: "レインボー", hero: "assets/themes/rainbow-hero.jpg", bg: "#FFF6E9" },
+export const ACCENT_COLORS = [
+  { id: "pink", label: "ピンク", color: "#F06BA8" },
+  { id: "yellow", label: "イエロー", color: "#E8A93D" },
+  { id: "blue", label: "ブルー", color: "#2F80D6" },
+  { id: "green", label: "グリーン", color: "#4CAF7D" },
+  { id: "purple", label: "パープル", color: "#9B6FD1" },
+  { id: "red", label: "レッド", color: "#E14F4F" },
+  { id: "beige", label: "ベージュ", color: "#B98A55" },
+  { id: "lightblue", label: "ライトブルー", color: "#4FB6E0" },
+  { id: "orange", label: "オレンジ", color: "#F08A3C" },
+  { id: "cherry", label: "チェリー", color: "#D6336C" },
+  { id: "navy", label: "ネイビー", color: "#3E4E7D" },
+  { id: "rainbow", label: "ラベンダー", color: "#7C6FD1" },
 ];
 
-export function getProfileTheme(id) {
-  return PROFILE_THEMES.find((t) => t.id === id) || PROFILE_THEMES[0];
+export function getAccentColor(id) {
+  return ACCENT_COLORS.find((c) => c.id === id) || ACCENT_COLORS[0];
 }
 
 // プロフィールアイコンとして選べる、アプリ内のキャラクター素材一覧

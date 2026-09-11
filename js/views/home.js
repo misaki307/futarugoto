@@ -1,11 +1,12 @@
 // ホーム = プロフィール画面。
 // 1画面に1人分のプロフィールだけを表示し、左右スワイプ/矢印ボタンで自分・友達を切り替える。
-// 背景テーマ(profileThemes.js)とプロフィールアイコン(写真 or キャラクター)は完全に独立していて、
-// どちらか一方を変えてももう一方には影響しない。
+// 画面の背景は常に共通のクリーム色で固定。アクセントカラー(profileThemes.js)は
+// 編集ボタンやアイコンのふちなど一部の装飾だけに使う差し色で、プロフィールアイコン(写真 or
+// キャラクター)とは完全に独立している。どちらか一方を変えてももう一方には影響しない。
 
 import { store } from "../store.js";
 import { escapeHtml, avatarHtml, compressImageFile, showToast } from "../util.js";
-import { PROFILE_THEMES, getProfileTheme, ICON_ASSETS, MBTI_OPTIONS, BLOOD_TYPE_OPTIONS } from "../profileThemes.js";
+import { ACCENT_COLORS, getAccentColor, ICON_ASSETS, MBTI_OPTIONS, BLOOD_TYPE_OPTIONS } from "../profileThemes.js";
 
 function formatBirthday(dateStr) {
   if (!dateStr) return "未設定";
@@ -18,7 +19,7 @@ export function mount(root, switchView) {
   const pending = store.consumePendingProfileOpen();
   let viewIndex = pending === null || pending === undefined ? myIndex : Number(pending);
   let editing = false;
-  let selectedThemeId = null;
+  let selectedAccentId = null;
   let touchX = null;
   let touchY = null;
 
@@ -35,15 +36,31 @@ export function mount(root, switchView) {
     const people = profile.people;
     const person = people[viewIndex] || people[0];
     const isSelf = viewIndex === myIndex;
-    const theme = getProfileTheme(person.profileTheme);
+    const accent = getAccentColor(person.profileTheme);
     const posts = store.getPosts().filter((p) => (p.author ?? 0) === viewIndex);
     const todayPost = posts[0];
     const nextEvent = store.getNextEvent();
     const recentPhotos = posts.filter((p) => p.photo).slice(0, 6);
 
-    if (editing && isSelf) selectedThemeId = selectedThemeId || person.profileTheme || "pink";
+    if (editing && isSelf) selectedAccentId = selectedAccentId || person.profileTheme || "pink";
 
-    const cardHtml =
+    const avatarBlockHtml = `
+      <div class="profile-avatar-block">
+        <div class="profile-avatar-ring" style="background:${accent.color};">
+          <span class="profile-avatar-ring__icon">${avatarHtml(person, "profile-avatar-ring__icon-img")}</span>
+          ${isSelf ? `<button class="profile-avatar-edit-btn" id="profile-icon-edit-btn" type="button" style="background:${accent.color};" aria-label="アイコンを変更">📷</button>` : ""}
+        </div>
+        ${
+          !editing
+            ? `
+        <div class="profile-card__name">${escapeHtml(person.name)}</div>
+        <div class="profile-card__bio">${person.bio ? escapeHtml(person.bio) : "ひとこと未設定"}</div>
+        ${isSelf ? `<button class="btn btn-sm profile-edit-trigger" id="profile-edit-btn" type="button" style="background:${accent.color};">編集</button>` : ""}`
+            : ""
+        }
+      </div>`;
+
+    const cardBodyHtml =
       editing && isSelf
         ? `
       <form class="profile-edit-form" id="profile-edit-form">
@@ -76,16 +93,14 @@ export function mount(root, switchView) {
         <label class="profile-edit-form__label">好きなもの</label>
         <input class="input" id="ed-likes" maxlength="40" placeholder="例: 甘いもの、映画" value="${escapeHtml(person.likes || "")}" />
 
-        <label class="profile-edit-form__label">背景テーマ</label>
-        <div class="theme-swatch-grid" id="ed-theme-grid">
-          ${PROFILE_THEMES.map(
-            (t) => `
-            <button type="button" class="theme-swatch-option ${t.id === selectedThemeId ? "is-active" : ""}" data-theme-id="${t.id}" style="--swatch-bg:${t.bg};">
-              <span class="theme-swatch-option__thumb"><img src="${t.hero}" alt="" /></span>
-              <span class="theme-swatch-option__label">${escapeHtml(t.label)}</span>
-            </button>`
+        <label class="profile-edit-form__label">アクセントカラー</label>
+        <div class="accent-swatch-grid" id="ed-accent-grid">
+          ${ACCENT_COLORS.map(
+            (c) => `
+            <button type="button" class="accent-swatch-option ${c.id === selectedAccentId ? "is-active" : ""}" data-accent-id="${c.id}" style="--swatch-color:${c.color};" aria-label="${escapeHtml(c.label)}" title="${escapeHtml(c.label)}"></button>`
           ).join("")}
         </div>
+        <div class="profile-edit-form__hint">選んだ色は編集ボタンやアイコンのふちなど、一部にだけ使われます</div>
 
         <div style="display:flex; gap:8px; margin-top:14px;">
           <button type="button" class="btn btn-ghost" id="ed-cancel-btn" style="flex:1;">キャンセル</button>
@@ -93,34 +108,26 @@ export function mount(root, switchView) {
         </div>
       </form>`
         : `
-      <div class="profile-card__head">
-        <div style="flex:1; min-width:0;">
-          <div class="profile-card__name">${escapeHtml(person.name)}</div>
-          <div class="profile-card__bio">${person.bio ? escapeHtml(person.bio) : "ひとこと未設定"}</div>
-        </div>
-        ${isSelf ? `<button class="btn btn-ghost btn-sm" id="profile-edit-btn" type="button">編集</button>` : ""}
-      </div>
-
       <div class="profile-info-grid">
-        <div class="profile-info-row"><span class="profile-info-row__icon">💫</span><span class="profile-info-row__label">MBTI</span><span class="profile-info-row__value">${person.mbti ? escapeHtml(person.mbti) : "未設定"}</span></div>
-        <div class="profile-info-row"><span class="profile-info-row__icon">🩸</span><span class="profile-info-row__label">血液型</span><span class="profile-info-row__value">${person.bloodType ? escapeHtml(person.bloodType) : "未設定"}</span></div>
-        <div class="profile-info-row"><span class="profile-info-row__icon">🎂</span><span class="profile-info-row__label">誕生日</span><span class="profile-info-row__value">${formatBirthday(person.birthday)}</span></div>
-        <div class="profile-info-row"><span class="profile-info-row__icon">⭐</span><span class="profile-info-row__label">好きなもの</span><span class="profile-info-row__value">${person.likes ? escapeHtml(person.likes) : "未設定"}</span></div>
+        <div class="profile-info-row"><span class="profile-info-row__icon" style="background:${accent.color}26;">💫</span><span class="profile-info-row__label">MBTI</span><span class="profile-info-row__value">${person.mbti ? escapeHtml(person.mbti) : "未設定"}</span></div>
+        <div class="profile-info-row"><span class="profile-info-row__icon" style="background:${accent.color}26;">🩸</span><span class="profile-info-row__label">血液型</span><span class="profile-info-row__value">${person.bloodType ? escapeHtml(person.bloodType) : "未設定"}</span></div>
+        <div class="profile-info-row"><span class="profile-info-row__icon" style="background:${accent.color}26;">🎂</span><span class="profile-info-row__label">誕生日</span><span class="profile-info-row__value">${formatBirthday(person.birthday)}</span></div>
+        <div class="profile-info-row"><span class="profile-info-row__icon" style="background:${accent.color}26;">⭐</span><span class="profile-info-row__label">好きなもの</span><span class="profile-info-row__value">${person.likes ? escapeHtml(person.likes) : "未設定"}</span></div>
       </div>
 
       <div class="profile-today-next">
         <div class="profile-today-next__item">
-          <div class="profile-today-next__label">Today</div>
+          <div class="profile-today-next__label" style="color:${accent.color};">Today</div>
           <div class="profile-today-next__body">${todayPost ? escapeHtml(todayPost.text || "(写真の投稿)") : "まだ投稿がありません"}</div>
         </div>
         <div class="profile-today-next__item">
-          <div class="profile-today-next__label">Next</div>
+          <div class="profile-today-next__label" style="color:${accent.color};">Next</div>
           <div class="profile-today-next__body">${nextEvent ? escapeHtml(nextEvent.title) : "まだ予定がありません"}</div>
         </div>
       </div>
 
       <div class="profile-recent-photos">
-        <div class="profile-recent-photos__label">最近の写真</div>
+        <div class="profile-recent-photos__label" style="color:${accent.color};">最近の写真</div>
         ${
           recentPhotos.length > 0
             ? `<div class="photo-grid">${recentPhotos.map((p) => `<button class="photo-tile" data-nav="photos"><img src="${p.photo}" alt="" /></button>`).join("")}</div>`
@@ -135,15 +142,7 @@ export function mount(root, switchView) {
           <button class="profile-page__icon-btn" id="profile-friends-btn" type="button" aria-label="友達一覧">👥</button>
         </div>
 
-        <div class="profile-hero" style="--profile-bg:${theme.bg};">
-          <img class="profile-hero__img" src="${theme.hero}" alt="${escapeHtml(theme.label)}テーマ" />
-          <div class="profile-hero__icon-wrap">
-            <span class="profile-hero__icon">${avatarHtml(person, "profile-hero__icon-img")}</span>
-            ${isSelf ? `<button class="profile-hero__icon-edit" id="profile-icon-edit-btn" type="button" aria-label="アイコンを変更">📷</button>` : ""}
-          </div>
-        </div>
-
-        <div class="profile-card card">${cardHtml}</div>
+        <div class="profile-card card">${avatarBlockHtml}${cardBodyHtml}</div>
 
         <div class="profile-page__nav">
           <button class="profile-page__nav-btn" id="profile-prev-btn" type="button" ${viewIndex === 0 ? "disabled" : ""}>‹ ${escapeHtml(people[0]?.name || "")}</button>
@@ -268,16 +267,16 @@ export function mount(root, switchView) {
     }
 
     if (editing && isSelf) {
-      const themeGrid = root.querySelector("#ed-theme-grid");
-      themeGrid.addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-theme-id]");
+      const accentGrid = root.querySelector("#ed-accent-grid");
+      accentGrid.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-accent-id]");
         if (!btn) return;
-        selectedThemeId = btn.dataset.themeId;
-        themeGrid.querySelectorAll(".theme-swatch-option").forEach((b) => b.classList.toggle("is-active", b === btn));
+        selectedAccentId = btn.dataset.accentId;
+        accentGrid.querySelectorAll(".accent-swatch-option").forEach((b) => b.classList.toggle("is-active", b === btn));
       });
       root.querySelector("#ed-cancel-btn").addEventListener("click", () => {
         editing = false;
-        selectedThemeId = null;
+        selectedAccentId = null;
         render();
       });
       root.querySelector("#profile-edit-form").addEventListener("submit", async (e) => {
@@ -289,7 +288,7 @@ export function mount(root, switchView) {
         const bloodType = root.querySelector("#ed-blood").value;
         const birthday = root.querySelector("#ed-birthday").value || null;
         const likes = root.querySelector("#ed-likes").value.trim();
-        const profileTheme = selectedThemeId || person.profileTheme;
+        const profileTheme = selectedAccentId || person.profileTheme;
         const people = store.getProfile().people.map((p, i) =>
           i === viewIndex ? { ...p, name, bio, mbti, bloodType, birthday, likes, profileTheme } : p
         );
@@ -298,7 +297,7 @@ export function mount(root, switchView) {
           await store.setProfile({ people });
           showToast("プロフィールを保存しました");
           editing = false;
-          selectedThemeId = null;
+          selectedAccentId = null;
           render();
         } catch {
           showToast("保存に失敗しました");
@@ -308,7 +307,7 @@ export function mount(root, switchView) {
     } else if (isSelf) {
       root.querySelector("#profile-edit-btn").addEventListener("click", () => {
         editing = true;
-        selectedThemeId = person.profileTheme;
+        selectedAccentId = person.profileTheme;
         render();
       });
     }

@@ -124,6 +124,9 @@ body {
   box-shadow: 0 0 0 2px var(--color-surface);
   animation: badgePop 0.25s ease;
 }
+.tab-bar__badge[hidden] {
+  display: none;
+}
 
 @keyframes badgePop {
   from { transform: scale(0.4); opacity: 0; }

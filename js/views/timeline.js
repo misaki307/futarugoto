@@ -9,6 +9,7 @@ export function mount(root) {
   let pendingPhoto = null;
   let author = store.getMyAuthorIndex();
   const profile = store.getProfile();
+  let knownPostIds = null; // 初回描画では何もアニメーションさせないためnullで開始
   store.markSeen("timeline");
 
   root.innerHTML = `
@@ -75,16 +76,20 @@ export function mount(root) {
         ${illustration("assets/characters/cat.png", "🐱", { className: "illust--xl" })}
         まだ投稿がないよ。<br>最初のひとことを残してみよう。
       </div>`;
+      knownPostIds = new Set();
       return;
     }
+    // 前回の描画になかった投稿(=今まさに届いたもの)だけ、ふわっと現れるアニメーションを付ける
+    const isFirstRender = knownPostIds === null;
     listEl.innerHTML = posts
       .map((post, i) => {
         const person = profile.people[post.author ?? 0] || profile.people[0];
         const rot = CORNER_ROTATIONS[i % CORNER_ROTATIONS.length];
         const decoSrc = CORNER_DECOS[i % CORNER_DECOS.length];
         const deco = `<span class="sticker sticker--pop" style="transform:rotate(${rot}deg)"><img src="${decoSrc}" alt="" loading="lazy" /></span>`;
+        const isNew = !isFirstRender && !knownPostIds.has(post.id);
         return `
-      <article class="card post-card" data-id="${post.id}">
+      <article class="card post-card ${isNew ? "post-card--enter" : ""}" data-id="${post.id}">
         ${deco}
         <div class="post-card__meta">
           ${avatarHtml(person, "post-avatar")}
@@ -107,6 +112,7 @@ export function mount(root) {
       </article>`;
       })
       .join("");
+    knownPostIds = new Set(posts.map((p) => p.id));
   }
 
   function clearPhoto() {

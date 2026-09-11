@@ -13,6 +13,7 @@ const views = { home, timeline, lists, calendar, photos, settings };
 const root = document.getElementById("view-root");
 const tabBar = document.querySelector(".tab-bar");
 const tabButtons = document.querySelectorAll(".tab-bar__item");
+const timelineBadge = document.getElementById("tab-badge-timeline");
 
 let cleanup = null;
 
@@ -41,9 +42,18 @@ function showAuthScreen(stage, user) {
   cleanup = authView.mount(root, { stage, user, onReady: (coupleId) => enterApp(coupleId) }) || null;
 }
 
+// タイムラインに新着があれば、どの画面を見ていてもタブに気づけるようバッジで知らせる
+function updateTimelineBadge() {
+  const count = store.getUnseenPostCount();
+  timelineBadge.hidden = count === 0;
+  timelineBadge.textContent = count > 9 ? "9+" : String(count);
+}
+
 function enterApp(coupleId) {
   store.init(coupleId);
   tabBar.hidden = false;
+  store.subscribePosts(updateTimelineBadge);
+  store.subscribeLastSeen(updateTimelineBadge);
   switchView("home");
 }
 

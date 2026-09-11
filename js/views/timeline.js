@@ -11,6 +11,7 @@ export function mount(root) {
   const profile = store.getProfile();
   let knownPostIds = null; // 初回描画では何もアニメーションさせないためnullで開始
   store.markSeen("timeline");
+  store.markSeen("reactions");
 
   root.innerHTML = `
     <section class="screen-hero screen-hero--row">

@@ -1,6 +1,7 @@
 import { initTheme } from "./theme.js";
 import { store } from "./store.js";
 import { subscribeAuth, getMyGroups, getCurrentUser } from "./auth.js";
+import { showToast } from "./util.js";
 import * as authView from "./views/auth.js";
 import * as home from "./views/home.js";
 import * as timeline from "./views/timeline.js";
@@ -44,12 +45,37 @@ function showAuthScreen(stage, user, extra = {}) {
   cleanup = authView.mount(root, { stage, user, onReady: (coupleId) => enterApp(coupleId), ...extra }) || null;
 }
 
-// タイムラインに新着があれば、どの画面を見ていてもタブに気づけるようバッジで知らせる
+// タイムラインに新着投稿・新着いいねがあれば、どの画面を見ていてもタブに気づけるようバッジで知らせる
 function updateTimelineBadge() {
-  const count = store.getUnseenPostCount();
+  const count = store.getUnseenPostCount() + store.getUnseenReactionCount();
   timelineBadge.hidden = count === 0;
   timelineBadge.textContent = count > 9 ? "9+" : String(count);
 }
+
+// パートナーからいいねが付いた瞬間、今どの画面にいてもトーストで知らせる。
+// 初回購読時点の状態はベースラインとして扱い、そこからの変化分だけ通知する。
+let reactionBaseline = null;
+function notifyNewReactions(posts) {
+  const myIndex = store.getMyAuthorIndex();
+  const isFirstRun = reactionBaseline === null;
+  const nextBaseline = new Map();
+  posts.forEach((p) => {
+    nextBaseline.set(p.id, p.lastReactionAt || 0);
+    if (isFirstRun) return;
+    if ((p.author ?? 0) !== myIndex) return;
+    if (p.lastReactionBy === undefined || p.lastReactionBy === myIndex) return;
+    const prevSeenAt = reactionBaseline.get(p.id) || 0;
+    if ((p.lastReactionAt || 0) > prevSeenAt) {
+      showToast(`${p.lastReactionEmoji || "❤️"} 相手があなたの投稿にいいねしました`);
+    }
+  });
+  reactionBaseline = nextBaseline;
+}
+
+// バッジ用の購読は enterApp が呼ばれるたび(=グループを切り替えるたび)張り直すので、
+// 前回分は必ず解除してから増やす(解除し忘れると切り替えるたびに通知が重複してしまう)
+let unsubBadgePosts = null;
+let unsubBadgeLastSeen = null;
 
 function enterApp(coupleId) {
   store.init(coupleId);
@@ -57,8 +83,14 @@ function enterApp(coupleId) {
     localStorage.setItem(LAST_GROUP_KEY, coupleId);
   } catch {}
   tabBar.hidden = false;
-  store.subscribePosts(updateTimelineBadge);
-  store.subscribeLastSeen(updateTimelineBadge);
+  reactionBaseline = null;
+  if (unsubBadgePosts) unsubBadgePosts();
+  if (unsubBadgeLastSeen) unsubBadgeLastSeen();
+  unsubBadgePosts = store.subscribePosts((posts) => {
+    updateTimelineBadge();
+    notifyNewReactions(posts);
+  });
+  unsubBadgeLastSeen = store.subscribeLastSeen(updateTimelineBadge);
   switchView("home");
 }
 

@@ -207,6 +207,14 @@ function getUnseenPostCount() {
   const since = getLastSeen("timeline");
   return posts.filter((p) => (p.author ?? 0) !== myIndex && p.createdAt > since).length;
 }
+// 自分の投稿にパートナーからついた、まだ見ていないいいねの数
+function getUnseenReactionCount() {
+  const myIndex = getMyAuthorIndex();
+  const since = getLastSeen("reactions");
+  return posts.filter(
+    (p) => (p.author ?? 0) === myIndex && p.lastReactionBy !== undefined && p.lastReactionBy !== myIndex && (p.lastReactionAt || 0) > since
+  ).length;
+}
 
 // ---- posts ----
 function getPosts() {
@@ -228,7 +236,13 @@ function removePost(id) {
   return deleteDoc(ref("posts", id));
 }
 function reactPost(postId, emoji) {
-  return updateDoc(ref("posts", postId), { [`reactions.${emoji}`]: increment(1) });
+  const myIndex = getMyAuthorIndex();
+  return updateDoc(ref("posts", postId), {
+    [`reactions.${emoji}`]: increment(1),
+    lastReactionBy: myIndex,
+    lastReactionEmoji: emoji,
+    lastReactionAt: Date.now(),
+  });
 }
 function subscribePosts(cb) {
   return subscribe("posts", cb);
@@ -466,6 +480,7 @@ export const store = {
   markSeen,
   subscribeLastSeen,
   getUnseenPostCount,
+  getUnseenReactionCount,
   getPosts,
   addPost,
   removePost,

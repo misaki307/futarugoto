@@ -1,6 +1,7 @@
 import { THEMES, getTheme, setTheme } from "../theme.js";
 import { store } from "../store.js";
 import { logOut } from "../auth.js";
+import { openGroupPicker } from "../app.js";
 import { showToast, illustration, avatarHtml, compressImageFile } from "../util.js";
 
 export function mount(root) {
@@ -49,6 +50,10 @@ export function mount(root) {
     </div>
 
     <div class="view-section">
+      <button class="settings-row" id="switch-group-btn" type="button">
+        <span class="settings-row__label">グループを切り替える・増やす</span>
+        <span class="settings-row__chevron">›</span>
+      </button>
       <button class="settings-row" id="reset-btn" type="button">
         <span class="settings-row__label">データを初期化</span>
         <span class="settings-row__chevron">›</span>
@@ -132,6 +137,10 @@ export function mount(root) {
     } finally {
       submitBtn.disabled = false;
     }
+  });
+
+  root.querySelector("#switch-group-btn").addEventListener("click", () => {
+    openGroupPicker();
   });
 
   root.querySelector("#reset-btn").addEventListener("click", async (e) => {

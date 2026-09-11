@@ -81,11 +81,22 @@ const ref = (name, id) => doc(db, "couples", coupleId, name, id);
 
 let unsubFns = [];
 
-// ログイン後、所属するカップルが決まったタイミングで一度だけ呼ぶ
+// ログイン後、所属するカップルが決まったタイミングで呼ぶ。
+// グループを切り替えた場合は前のグループのデータが一瞬でも見えないよう、
+// 再購読の前にいったん状態をリセットする。
 export function init(id) {
   coupleId = id;
   unsubFns.forEach((fn) => fn());
   unsubFns = [];
+  posts = [];
+  listItems = {};
+  events = [];
+  profile = DEFAULT_PROFILE;
+  photoFavoriteIds = new Set();
+  standalonePhotos = [];
+  albums = [];
+  coupleMembers = [];
+  lastSeen = {};
 
   unsubFns.push(
     onSnapshot(col("posts"), (snap) => {

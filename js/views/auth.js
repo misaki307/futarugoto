@@ -1,5 +1,5 @@
-import { signUp, signIn, logOut, createCouple, joinCouple } from "../auth.js";
-import { illustration } from "../util.js";
+import { signUp, signIn, logOut, createCouple, joinCouple, getMyGroups, getCoupleInfo } from "../auth.js";
+import { illustration, escapeHtml } from "../util.js";
 
 const ERROR_MESSAGES = {
   "auth/email-already-in-use": "このメールアドレスは既に登録されています",
@@ -17,8 +17,14 @@ function friendlyError(err) {
   return ERROR_MESSAGES[err?.code] || "エラーが発生しました。もう一度お試しください";
 }
 
+// グループ(カップル)の表示名。プロフィールの名前から「わたし & 友だち」のように組み立てる
+function groupLabel(info) {
+  const names = (info?.profile?.people || []).map((p) => p?.name).filter(Boolean);
+  return names.length ? names.join(" & ") : "名前未設定のグループ";
+}
+
 // stage: "login" | "pair"
-export function mount(root, { onReady, stage = "login", user = null }) {
+export function mount(root, { onReady, stage = "login", user = null, onBack = null }) {
   let mode = "login"; // login | signup
   let pairMode = "create"; // create | join
 
@@ -66,11 +72,21 @@ export function mount(root, { onReady, stage = "login", user = null }) {
 
   function renderPair() {
     root.innerHTML = `
+      ${
+        onBack
+          ? `<button class="profile-page__icon-btn" id="pair-back-btn" type="button" aria-label="戻る" style="margin-bottom:12px;">‹</button>`
+          : ""
+      }
       <section class="screen-hero" style="text-align:center;">
         ${illustration("assets/characters/rabbit.png", "🐰", { className: "illust--xl" })}
         <h1 class="screen-hero__title" style="margin-top:8px;">PAIRING</h1>
         <p class="screen-hero__subtitle" style="justify-content:center;">パートナーとふたりの空間をつくろう</p>
       </section>
+
+      <div class="view-section" id="groups-section" hidden>
+        <h3 class="settings-heading">今いるグループ</h3>
+        <div id="groups-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
 
       <div class="segmented" id="pair-tabs">
         <button class="segmented__item ${pairMode === "create" ? "is-active" : ""}" data-mode="create" type="button">新しく作る</button>
@@ -84,7 +100,38 @@ export function mount(root, { onReady, stage = "login", user = null }) {
       </button>
     `;
 
+    root.querySelector("#pair-back-btn")?.addEventListener("click", () => onBack());
+
     const body = root.querySelector("#pair-body");
+
+    async function loadGroups() {
+      const section = root.querySelector("#groups-section");
+      const list = root.querySelector("#groups-list");
+      let ids = [];
+      try {
+        ids = await getMyGroups(user.uid);
+      } catch {
+        return;
+      }
+      if (ids.length === 0 || !section) return;
+      const infos = await Promise.all(ids.map((id) => getCoupleInfo(id).catch(() => null)));
+      if (!section.isConnected) return; // 読み込み中に別の画面へ移動していたら何もしない
+      section.hidden = false;
+      list.innerHTML = infos
+        .map((info, i) =>
+          info
+            ? `<button class="settings-row" data-enter-group="${ids[i]}" type="button">
+                <span class="settings-row__label">${escapeHtml(groupLabel(info))}</span>
+                <span class="settings-row__chevron">›</span>
+              </button>`
+            : ""
+        )
+        .join("");
+      list.querySelectorAll("[data-enter-group]").forEach((btn) => {
+        btn.addEventListener("click", () => onReady(btn.dataset.enterGroup));
+      });
+    }
+    loadGroups();
 
     function renderBody() {
       if (pairMode === "create") {

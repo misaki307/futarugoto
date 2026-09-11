@@ -1,6 +1,6 @@
 import { initTheme } from "./theme.js";
 import { store } from "./store.js";
-import { subscribeAuth, getMyCoupleId } from "./auth.js";
+import { subscribeAuth, getMyGroups, getCurrentUser } from "./auth.js";
 import * as authView from "./views/auth.js";
 import * as home from "./views/home.js";
 import * as timeline from "./views/timeline.js";
@@ -14,6 +14,8 @@ const root = document.getElementById("view-root");
 const tabBar = document.querySelector(".tab-bar");
 const tabButtons = document.querySelectorAll(".tab-bar__item");
 const timelineBadge = document.getElementById("tab-badge-timeline");
+
+const LAST_GROUP_KEY = "sharedapp:v1:lastCoupleId";
 
 let cleanup = null;
 
@@ -34,12 +36,12 @@ tabButtons.forEach((btn) => {
   btn.addEventListener("click", () => switchView(btn.dataset.view));
 });
 
-function showAuthScreen(stage, user) {
+function showAuthScreen(stage, user, extra = {}) {
   tabBar.hidden = true;
   if (cleanup) cleanup();
   root.removeAttribute("data-view");
   root.scrollTop = 0;
-  cleanup = authView.mount(root, { stage, user, onReady: (coupleId) => enterApp(coupleId) }) || null;
+  cleanup = authView.mount(root, { stage, user, onReady: (coupleId) => enterApp(coupleId), ...extra }) || null;
 }
 
 // タイムラインに新着があれば、どの画面を見ていてもタブに気づけるようバッジで知らせる
@@ -51,10 +53,27 @@ function updateTimelineBadge() {
 
 function enterApp(coupleId) {
   store.init(coupleId);
+  try {
+    localStorage.setItem(LAST_GROUP_KEY, coupleId);
+  } catch {}
   tabBar.hidden = false;
   store.subscribePosts(updateTimelineBadge);
   store.subscribeLastSeen(updateTimelineBadge);
   switchView("home");
+}
+
+// 設定画面などから、いつでもグループの選択・追加画面に戻れるようにする入り口。
+// ログアウトはせず、同じアカウントのまま所属グループを選び直せる。
+export function openGroupPicker() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const previousView = root.dataset.view || "home";
+  showAuthScreen("pair", user, {
+    onBack: () => {
+      tabBar.hidden = false;
+      switchView(previousView);
+    },
+  });
 }
 
 initTheme();
@@ -65,12 +84,16 @@ subscribeAuth(async (user) => {
     return;
   }
   try {
-    const coupleId = await getMyCoupleId(user.uid);
-    if (!coupleId) {
+    const groups = await getMyGroups(user.uid);
+    if (groups.length === 0) {
       showAuthScreen("pair", user);
       return;
     }
-    enterApp(coupleId);
+    let last = null;
+    try {
+      last = localStorage.getItem(LAST_GROUP_KEY);
+    } catch {}
+    enterApp(last && groups.includes(last) ? last : groups[0]);
   } catch {
     showAuthScreen("pair", user);
   }

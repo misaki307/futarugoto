@@ -59,10 +59,24 @@ function randomCode() {
   return code;
 }
 
-// このユーザーが既にどこかのカップルに所属していればそのIDを返す
-export async function getMyCoupleId(uid) {
+// このユーザーが所属している全グループ(カップル)のIDを返す。
+// 古いデータ(単一の coupleId しか持たない頃のアカウント)にも対応するため、
+// coupleIds 配列が無ければ単一の coupleId をフォールバックとして使う。
+export async function getMyGroups(uid) {
   const snap = await getDoc(doc(db, "users", uid));
-  return snap.exists() ? snap.data().coupleId || null : null;
+  if (!snap.exists()) return [];
+  const data = snap.data();
+  if (Array.isArray(data.coupleIds) && data.coupleIds.length) return data.coupleIds;
+  return data.coupleId ? [data.coupleId] : [];
+}
+
+// ユーザーの所属グループ一覧に1件追加する(既存分は消さない)
+async function addGroupToUser(uid, coupleId) {
+  const snap = await getDoc(doc(db, "users", uid));
+  const data = snap.exists() ? snap.data() : {};
+  const current = Array.isArray(data.coupleIds) && data.coupleIds.length ? data.coupleIds : data.coupleId ? [data.coupleId] : [];
+  const next = current.includes(coupleId) ? current : [...current, coupleId];
+  await setDoc(doc(db, "users", uid), { coupleIds: next }, { merge: true });
 }
 
 // 新しいカップル(2人組の共有スペース)を作り、招待コードを発行する。
@@ -74,7 +88,7 @@ export async function createCouple(uid) {
   const coupleRef = doc(collection(db, "couples"));
   await setDoc(coupleRef, { code, members: [uid], createdAt: Date.now() });
   await setDoc(doc(db, "inviteCodes", code), { coupleId: coupleRef.id });
-  await setDoc(doc(db, "users", uid), { coupleId: coupleRef.id }, { merge: true });
+  await addGroupToUser(uid, coupleRef.id);
   return { coupleId: coupleRef.id, code };
 }
 
@@ -93,7 +107,7 @@ export async function joinCouple(uid, code) {
   } catch {
     throw new Error("FULL");
   }
-  await setDoc(doc(db, "users", uid), { coupleId }, { merge: true });
+  await addGroupToUser(uid, coupleId);
   return coupleId;
 }
 
